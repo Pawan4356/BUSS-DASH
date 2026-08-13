@@ -19,17 +19,28 @@ pip install -r requirements.txt
 cd ../..
 ```
 
-## 2. Configure environment
+## 2. Create a Postgres role and database
+
+If you don't already have one, `.env.example`'s `DATABASE_URL` is a
+placeholder, not real credentials — create a dedicated role/db:
+
+```bash
+sudo -u postgres psql -c "CREATE USER bussdash WITH PASSWORD 'bussdash';"
+sudo -u postgres psql -c "CREATE DATABASE bussdash OWNER bussdash;"
+```
+
+## 3. Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` — at minimum, point `DATABASE_URL` at your Postgres instance and
-set a real `JWT_SECRET`. All three services (Express, FastAPI, and Prisma's
-CLI) read this same file.
+Edit `.env` — set `DATABASE_URL` to match the role/db above (e.g.
+`postgresql://bussdash:bussdash@localhost:5432/bussdash`) and set a real
+`JWT_SECRET`. All three services (Express, FastAPI, and Prisma's CLI) read
+this same file.
 
-## 3. Create the schema and seed demo data
+## 4. Create the schema and seed demo data
 
 ```bash
 npm run prisma:migrate   # creates the tables from prisma/schema.prisma
@@ -39,7 +50,7 @@ npm run --workspace backend/express seed
 The seed script creates one business with every entitlement flag turned on
 and a login: `owner@demo.test` / `password123`.
 
-## 4. Run the three services
+## 5. Run the three services
 
 ```bash
 npm run dev:express    # http://localhost:4000
