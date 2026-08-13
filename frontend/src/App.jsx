@@ -1,13 +1,16 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { RequireAuth } from './app/RequireAuth'
+import { RequireModule } from './app/RequireModule'
 import { Layout } from './app/Layout'
 import { LoginPage } from './app/LoginPage'
 import { DashboardHome } from './app/DashboardHome'
 import { selectIsAuthenticated, sessionEstablished } from './app/authSlice'
 import { useGetMeQuery } from './api/authApi'
+import { FLAGS } from './shared/flags'
+import { staffDirectoryRoutes } from './modules/staff-directory/routes'
 
 /** Re-hydrates business/flags from the stored token on a full page reload. */
 function SessionBootstrap({ children }) {
@@ -36,6 +39,16 @@ export default function App() {
           }
         >
           <Route index element={<DashboardHome />} />
+          <Route
+            path="staff-directory/*"
+            element={
+              <RequireModule flagKey={FLAGS.STAFF_DIRECTORY}>
+                <Outlet />
+              </RequireModule>
+            }
+          >
+            {staffDirectoryRoutes}
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
