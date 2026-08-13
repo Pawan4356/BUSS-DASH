@@ -1,0 +1,17 @@
+{
+  "name": "buss-dash",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Multi-module business dashboard — staff directory, recruitment, attendance, resources, operational scheduling.",
+  "workspaces": [
+    "frontend",
+    "backend/express"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:express": "npm run dev --workspace backend/express",
+    "dev:fastapi": "cd backend/fastapi && uvicorn app.main:app --reload --port 8000",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma"
+  }
+}
