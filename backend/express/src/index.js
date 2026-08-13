@@ -5,6 +5,7 @@ import { authRouter } from './routes/auth.js'
 import { staffDirectoryRouter } from './routes/staffDirectory.js'
 import { staffRecruitmentRouter } from './routes/staffRecruitment.js'
 import { staffAttendanceRouter } from './routes/staffAttendance.js'
+import { resourceDirectoryRouter } from './routes/resourceDirectory.js'
 
 const app = express()
 
@@ -17,6 +18,7 @@ app.use('/auth', authRouter)
 app.use('/staff-directory', staffDirectoryRouter)
 app.use('/staff-recruitment', staffRecruitmentRouter)
 app.use('/staff-attendance', staffAttendanceRouter)
+app.use('/resource-directory', resourceDirectoryRouter)
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
