@@ -81,8 +81,6 @@ model Account {
   passwordHash String
   role         AccountRole
   createdAt    DateTime    @default(now())
-
-  staffProfile Staff?
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -101,8 +99,10 @@ model Staff {
   id         String   @id @default(cuid())
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  accountId  String?  @unique
-  account    Account? @relation(fields: [accountId], references: [id])
+  /// External platform account_id supplied at invite time (spec §5) — a
+  /// reference string, not a foreign key to the dashboard-login `Account`
+  /// model above (that one is for manager roles only).
+  accountId  String?
 
   // General
   firstName    String?
@@ -120,7 +120,8 @@ model Staff {
   pastExperience    String?
   employmentType    String?
   status            StaffStatus @default(PENDING)
-  responsibilities  String[]    @default([])
+  // responsibilitiesCount (spec §5 list column) is derived, not stored —
+  // see workResponsibility + workspace/resourceResponsibilities below.
 
   archived  Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -135,6 +136,7 @@ model Staff {
   interviewsAsInterviewer   InterviewRound[]          @relation("StaffInterviewer")
 
   @@index([businessId])
+  @@index([accountId])
 }
 
 enum DayOfWeek {

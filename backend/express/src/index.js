@@ -2,6 +2,7 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import { authRouter } from './routes/auth.js'
+import { staffDirectoryRouter } from './routes/staffDirectory.js'
 
 const app = express()
 
@@ -11,6 +12,7 @@ app.use(express.json())
 app.get('/health', (req, res) => res.json({ ok: true }))
 
 app.use('/auth', authRouter)
+app.use('/staff-directory', staffDirectoryRouter)
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
