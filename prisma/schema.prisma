@@ -1,0 +1,457 @@
+// BUSS-DASH — shared Prisma schema
+// Single Postgres database, read/written by backend/express (CRUD/auth)
+// and backend/fastapi (scheduling engine, read + scoped writes on Assignment).
+//
+// Fields typed String instead of an enum are ones the spec marks "+ custom" —
+// the UI offers presets from shared/ui-tags plus free text, so the column
+// can't be constrained to a fixed enum.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Account / Business / Entitlements
+// ─────────────────────────────────────────────────────────────────────────
+
+enum AccountRole {
+  OWNER
+  STAFF_MANAGER
+  RECRUITMENT_MANAGER
+  ATTENDANCE_MANAGER
+  RESOURCE_MANAGER
+  OPERATIONS_MANAGER
+  STAFF
+}
+
+enum VerificationLevel {
+  BASIC
+  ENHANCED
+}
+
+enum RecruitmentModelType {
+  B2C
+  INTERNAL
+  BOTH
+}
+
+model Business {
+  id                   String               @id @default(cuid())
+  name                 String
+  verificationLevel    VerificationLevel    @default(BASIC)
+  recruitmentModelType RecruitmentModelType @default(INTERNAL)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  flags        BusinessFlags?
+  accounts     Account[]
+  staff        Staff[]
+  recruitments Recruitment[]
+  workspaces   Workspace[]
+  resources    Resource[]
+  assignments  Assignment[]
+  attendance   AttendanceRecord[]
+}
+
+/// Seven entitlement flags gating each dashboard/feature. verification_level
+/// is deliberately excluded — see spec §3 open question / docs/decisions.md.
+model BusinessFlags {
+  id                           String   @id @default(cuid())
+  businessId                   String   @unique
+  business                     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffDirectory               Boolean  @default(false)
+  staffRecruitment             Boolean  @default(false)
+  staffAttendance              Boolean  @default(false)
+  resourceDirectory            Boolean  @default(false)
+  operationalScheduling        Boolean  @default(false)
+  operationalSchedulingPremium Boolean  @default(false)
+  updatedAt                    DateTime @updatedAt
+}
+
+model Account {
+  id           String      @id @default(cuid())
+  businessId   String
+  business     Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  email        String      @unique
+  passwordHash String
+  role         AccountRole
+  createdAt    DateTime    @default(now())
+
+  staffProfile Staff?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Module: Staff Directory
+// ─────────────────────────────────────────────────────────────────────────
+
+enum StaffStatus {
+  PENDING
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  RESIGNED
+}
+
+model Staff {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accountId  String?  @unique
+  account    Account? @relation(fields: [accountId], references: [id])
+
+  // General
+  firstName    String?
+  lastName     String?
+  phoneNumber  String?
+  gender       String?
+  dateOfBirth  DateTime?
+  profilePhoto String?
+
+  // Professional
+  title             String?
+  dateOfJoining     DateTime?
+  yearsOfExperience Float?
+  qualifications    String?
+  pastExperience    String?
+  employmentType    String?
+  status            StaffStatus @default(PENDING)
+  responsibilities  String[]    @default([])
+
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workingSchedule           WorkingScheduleEntry[]
+  workResponsibility        WorkResponsibility?
+  workspaceResponsibilities WorkspaceResponsibility[]
+  resourceResponsibilities  ResourceResponsibility[]
+  attendanceRecords         AttendanceRecord[]
+  assignments               Assignment[]
+  interviewsAsInterviewer   InterviewRound[]          @relation("StaffInterviewer")
+
+  @@index([businessId])
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+/// Shared time-window shape (spec §4) — reused for Staff availability and
+/// Assignment schedules via a discriminated ownerType/ownerId pair would
+/// overcomplicate a first cut, so each owner gets its own thin table.
+model WorkingScheduleEntry {
+  id        String    @id @default(cuid())
+  staffId   String
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  dayOfWeek DayOfWeek
+  isOff     Boolean   @default(false)
+  startTime String? // "HH:mm"
+  endTime   String? // "HH:mm"
+
+  @@index([staffId])
+}
+
+/// Subscription-gated checklist (spec §5) — each field only meaningful if
+/// the corresponding BusinessFlags entry is on.
+model WorkResponsibility {
+  id                    String  @id @default(cuid())
+  staffId               String  @unique
+  staff                 Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffRecruitment      Boolean @default(false)
+  staffAttendance       Boolean @default(false)
+  operationalScheduling Boolean @default(false)
+}
+
+model WorkspaceResponsibility {
+  staffId     String
+  staff       Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, workspaceId])
+}
+
+model ResourceResponsibility {
+  staffId    String
+  staff      Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, resourceId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Module: Staff Recruitment
+// ─────────────────────────────────────────────────────────────────────────
+
+enum RecruitmentStatus {
+  INACTIVE
+  ACTIVE
+  CLOSED
+}
+
+enum RecruitmentAudience {
+  B2C
+  INTERNAL
+}
+
+model Recruitment {
+  id                 String               @id @default(cuid())
+  businessId         String
+  business           Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  role               String
+  experienceRequired String?
+  employmentType     String?
+  numberOfOpenings   Int?
+  description        String?
+  requirements       String?
+  benefits           String?
+  audience           RecruitmentAudience?
+  status             RecruitmentStatus    @default(INACTIVE)
+  interviewRequired  Boolean              @default(false)
+  launchDate         DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  interviewRounds InterviewRound[]
+  candidates      Candidate[]
+
+  @@index([businessId])
+}
+
+enum InterviewType {
+  LOCATION
+  ONLINE
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model InterviewRound {
+  id                    String          @id @default(cuid())
+  recruitmentId         String
+  recruitment           Recruitment     @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  roundNumber           Int
+  type                  InterviewType
+  locationAddress       String?
+  onlineLink            String?
+  date                  DateTime?
+  time                  String?
+  interviewerStaffId    String?
+  interviewerStaff      Staff?          @relation("StaffInterviewer", fields: [interviewerStaffId], references: [id])
+  interviewerManualName String?
+  description           String?
+  status                InterviewStatus @default(SCHEDULED)
+
+  @@index([recruitmentId])
+}
+
+enum CandidateSource {
+  B2C
+  WALK_IN
+}
+
+enum CandidateStatus {
+  APPLIED
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+model Candidate {
+  id             String          @id @default(cuid())
+  recruitmentId  String
+  recruitment    Recruitment     @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  accountId      String?
+  name           String
+  email          String?
+  phone          String?
+  cvUrl          String?
+  qualifications String?
+  experience     String?
+  coverNote      String?
+  portfolio      String?
+  source         CandidateSource
+  appliedDate    DateTime        @default(now())
+  status         CandidateStatus @default(APPLIED)
+
+  @@index([recruitmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Module: Staff Attendance
+// ─────────────────────────────────────────────────────────────────────────
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  OFF
+}
+
+model AttendanceRecord {
+  id            String           @id @default(cuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId       String
+  staff         Staff            @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date          DateTime         @db.Date
+  checkIn       DateTime?
+  checkOut      DateTime?
+  status        AttendanceStatus @default(ABSENT)
+  lateCheckIn   Boolean          @default(false)
+  earlyCheckOut Boolean          @default(false)
+
+  @@unique([staffId, date])
+  @@index([businessId, date])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Module: Resource Directory
+// ─────────────────────────────────────────────────────────────────────────
+
+enum BusinessStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum OperationalStatus {
+  AVAILABLE
+  NOT_AVAILABLE
+}
+
+model Workspace {
+  id                String             @id @default(cuid())
+  businessId        String
+  business          Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name              String
+  type              String?
+  businessStatus    BusinessStatus     @default(INACTIVE)
+  operationalStatus OperationalStatus?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  subSpaces        SubSpace[]
+  resources        ResourceWorkspace[]
+  responsibleStaff WorkspaceResponsibility[]
+  assignments      Assignment[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model SubSpace {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+
+  @@index([workspaceId])
+}
+
+enum ResourceBehavior {
+  DEDICATED
+  SHARED
+}
+
+model Resource {
+  id                 String             @id @default(cuid())
+  businessId         String
+  business           Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name               String
+  category           String?
+  businessStatus     BusinessStatus     @default(INACTIVE)
+  operationalStatus  OperationalStatus?
+  behavior           ResourceBehavior   @default(SHARED)
+  schedulingRequired Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  workspaces       ResourceWorkspace[]
+  responsibleStaff ResourceResponsibility[]
+  assignments      Assignment[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+/// A resource may belong to one or more workspaces, or be independent
+/// (no rows here) — spec §8 "Inside Workspace (one or more) / Independent".
+model ResourceWorkspace {
+  resourceId  String
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([resourceId, workspaceId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Module: Operational Scheduling
+// ─────────────────────────────────────────────────────────────────────────
+
+enum RepeatPattern {
+  NONE
+  WEEKLY
+  CUSTOM
+}
+
+enum AssignmentStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Assignment {
+  id             String           @id @default(cuid())
+  businessId     String
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId        String
+  staff          Staff            @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  workspaceId    String?
+  workspace      Workspace?       @relation(fields: [workspaceId], references: [id])
+  resourceId     String?
+  resource       Resource?        @relation(fields: [resourceId], references: [id])
+  repeatPattern  RepeatPattern    @default(NONE)
+  repeatInterval Int?
+  startDate      DateTime         @db.Date
+  endDate        DateTime?        @db.Date
+  note           String?
+  status         AssignmentStatus @default(UPCOMING)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  timeWindows AssignmentTimeWindow[]
+
+  @@index([businessId])
+  @@index([staffId])
+  @@index([workspaceId])
+  @@index([resourceId])
+}
+
+model AssignmentTimeWindow {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  dayOfWeek    DayOfWeek
+  startTime    String // "HH:mm"
+  endTime      String // "HH:mm"
+
+  @@index([assignmentId])
+}

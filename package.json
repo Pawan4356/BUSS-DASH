@@ -13,5 +13,11 @@
     "dev:fastapi": "cd backend/fastapi && uvicorn app.main:app --reload --port 8000",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
   }
 }
