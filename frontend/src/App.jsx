@@ -14,6 +14,7 @@ import { staffDirectoryRoutes } from './modules/staff-directory/routes'
 import { resourceDirectoryRoutes } from './modules/resource-directory/routes'
 import { staffAttendanceRoutes } from './modules/staff-attendance/routes'
 import { staffRecruitmentRoutes } from './modules/staff-recruitment/routes'
+import { operationalSchedulingRoutes } from './modules/operational-scheduling/routes'
 
 /** Re-hydrates business/flags from the stored token on a full page reload. */
 function SessionBootstrap({ children }) {
@@ -81,6 +82,16 @@ export default function App() {
             }
           >
             {staffRecruitmentRoutes}
+          </Route>
+          <Route
+            path="operational-scheduling/*"
+            element={
+              <RequireModule flagKey={FLAGS.OPERATIONAL_SCHEDULING}>
+                <Outlet />
+              </RequireModule>
+            }
+          >
+            {operationalSchedulingRoutes}
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
