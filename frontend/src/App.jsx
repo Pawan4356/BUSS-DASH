@@ -12,6 +12,7 @@ import { useGetMeQuery } from './api/authApi'
 import { FLAGS } from './shared/flags'
 import { staffDirectoryRoutes } from './modules/staff-directory/routes'
 import { resourceDirectoryRoutes } from './modules/resource-directory/routes'
+import { staffAttendanceRoutes } from './modules/staff-attendance/routes'
 
 /** Re-hydrates business/flags from the stored token on a full page reload. */
 function SessionBootstrap({ children }) {
@@ -59,6 +60,16 @@ export default function App() {
             }
           >
             {resourceDirectoryRoutes}
+          </Route>
+          <Route
+            path="staff-attendance/*"
+            element={
+              <RequireModule flagKey={FLAGS.STAFF_ATTENDANCE}>
+                <Outlet />
+              </RequireModule>
+            }
+          >
+            {staffAttendanceRoutes}
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
