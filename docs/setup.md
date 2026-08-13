@@ -25,9 +25,13 @@ If you don't already have one, `.env.example`'s `DATABASE_URL` is a
 placeholder, not real credentials — create a dedicated role/db:
 
 ```bash
-sudo -u postgres psql -c "CREATE USER bussdash WITH PASSWORD 'bussdash';"
+sudo -u postgres psql -c "CREATE USER bussdash WITH PASSWORD 'bussdash' CREATEDB;"
 sudo -u postgres psql -c "CREATE DATABASE bussdash OWNER bussdash;"
 ```
+
+`CREATEDB` is required because `prisma migrate dev` creates a disposable
+"shadow database" on each run to diff migrations against — without it you'll
+hit `P3014: permission denied to create database`.
 
 ## 3. Configure environment
 
