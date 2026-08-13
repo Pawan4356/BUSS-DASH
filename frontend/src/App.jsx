@@ -13,6 +13,7 @@ import { FLAGS } from './shared/flags'
 import { staffDirectoryRoutes } from './modules/staff-directory/routes'
 import { resourceDirectoryRoutes } from './modules/resource-directory/routes'
 import { staffAttendanceRoutes } from './modules/staff-attendance/routes'
+import { staffRecruitmentRoutes } from './modules/staff-recruitment/routes'
 
 /** Re-hydrates business/flags from the stored token on a full page reload. */
 function SessionBootstrap({ children }) {
@@ -70,6 +71,16 @@ export default function App() {
             }
           >
             {staffAttendanceRoutes}
+          </Route>
+          <Route
+            path="staff-recruitment/*"
+            element={
+              <RequireModule flagKey={FLAGS.STAFF_RECRUITMENT}>
+                <Outlet />
+              </RequireModule>
+            }
+          >
+            {staffRecruitmentRoutes}
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
