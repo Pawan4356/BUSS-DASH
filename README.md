@@ -40,5 +40,42 @@ default and documented in [`docs/decisions.md`](./docs/decisions.md):
 
 ## Getting started
 
-See `docs/setup.md` for local dev instructions (Postgres, Prisma migrate, running
-both backend services and the frontend).
+Prerequisites: Node.js 20+, Python 3.11+, a local PostgreSQL instance.
+
+```bash
+# 1. Install dependencies
+npm install
+cd backend/fastapi && python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cd ../..
+
+# 2. Create a Postgres role + database
+sudo -u postgres psql -c "CREATE USER bussdash WITH PASSWORD 'bussdash' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE bussdash OWNER bussdash;"
+
+# 3. Configure environment
+cp .env.example .env
+# edit .env: DATABASE_URL="postgresql://bussdash:bussdash@localhost:5432/bussdash"
+
+# 4. Create the schema and load demo data
+npm run prisma:migrate
+npm run --workspace backend/express seed
+
+# 5. Run all three services (separate terminals)
+npm run dev:express    # http://localhost:4000
+npm run dev:fastapi    # http://localhost:8000
+npm run dev:frontend   # http://localhost:5173
+```
+
+Open `http://localhost:5173` and sign in with `owner@demo.test` / `password123`.
+
+The seed script (`backend/express/src/seed.js`) loads a full presentation
+dataset — 10 staff across every status, 3 workspaces, 11 resources, 4
+recruitments in every stage with candidates and interview rounds, 15 days of
+attendance history, and a mix of active/upcoming/completed scheduling
+assignments. It's idempotent — re-run it any time to reset to a clean demo
+state.
+
+See `docs/setup.md` for troubleshooting notes (shadow-database permissions,
+why `.env` lives at the repo root, etc.) and `docs/decisions.md` for the
+reasoning behind every judgment call made while building this.
