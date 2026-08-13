@@ -11,6 +11,7 @@ import { selectIsAuthenticated, sessionEstablished } from './app/authSlice'
 import { useGetMeQuery } from './api/authApi'
 import { FLAGS } from './shared/flags'
 import { staffDirectoryRoutes } from './modules/staff-directory/routes'
+import { resourceDirectoryRoutes } from './modules/resource-directory/routes'
 
 /** Re-hydrates business/flags from the stored token on a full page reload. */
 function SessionBootstrap({ children }) {
@@ -48,6 +49,16 @@ export default function App() {
             }
           >
             {staffDirectoryRoutes}
+          </Route>
+          <Route
+            path="resource-directory/*"
+            element={
+              <RequireModule flagKey={FLAGS.RESOURCE_DIRECTORY}>
+                <Outlet />
+              </RequireModule>
+            }
+          >
+            {resourceDirectoryRoutes}
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
