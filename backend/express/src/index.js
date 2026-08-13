@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import { authRouter } from './routes/auth.js'
 import { staffDirectoryRouter } from './routes/staffDirectory.js'
+import { staffRecruitmentRouter } from './routes/staffRecruitment.js'
 
 const app = express()
 
@@ -13,6 +14,7 @@ app.get('/health', (req, res) => res.json({ ok: true }))
 
 app.use('/auth', authRouter)
 app.use('/staff-directory', staffDirectoryRouter)
+app.use('/staff-recruitment', staffRecruitmentRouter)
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

@@ -57,3 +57,13 @@ Business/Account/Flags layer. Notable modeling calls:
   are separate tables even though the picker UI is shared — they mean
   different things (capacity vs. an actual booking) and belong to different
   owners.
+
+## 6. "Offers Sent" metric (Staff Recruitment summary — surfaced during build, not in the original open-items list)
+
+The candidate status enum spec §6 gives is a closed set — `Applied` (default) /
+`Shortlisted` / `Rejected` / `Hired` — with no "Offered" state, yet the summary
+(Option 1) asks for both "Offers Sent" and "Hired Candidates" as separate
+counts. Rather than invent a status the detail view doesn't list, `Offers Sent`
+is approximated as the count of `Shortlisted` candidates (the pre-hire stage
+in this simplified funnel). Flag this to the business owner if a distinct
+offer step turns out to be intentional — it would need its own status value.
