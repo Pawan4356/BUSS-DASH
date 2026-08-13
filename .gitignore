@@ -27,6 +27,9 @@ npm-debug.log*
 .idea/
 .DS_Store
 
+# Local agent tooling
+.claude/
+
 # Test / coverage
 coverage/
 .pytest_cache/

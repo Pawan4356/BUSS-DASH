@@ -67,3 +67,29 @@ counts. Rather than invent a status the detail view doesn't list, `Offers Sent`
 is approximated as the count of `Shortlisted` candidates (the pre-hire stage
 in this simplified funnel). Flag this to the business owner if a distinct
 offer step turns out to be intentional — it would need its own status value.
+
+## 7. Utilization math (Operational Scheduling date-scoped breakdown)
+
+The spec asks for Utilization %, Idle/Free Hours, Overtime Hours, and
+Downtime/Maintenance Hours (spec §9) without ever defining business hours or
+a maintenance time window, so `backend/fastapi/app/services/scheduling.py`
+picks pragmatic defaults:
+
+- Every day is a 24-hour capacity window (no separate "operating hours"
+  concept exists to divide by instead).
+- Staff **Overtime Hours** = hours assigned beyond an 8-hour standard day.
+- A resource's `businessStatus == MAINTENANCE` counts as the *entire* day
+  under **Maintenance Hours** (the field isn't itself time-scoped); leftover
+  idle time is **Downtime**.
+
+These are clearly-labeled approximations, not guesses buried in the code —
+revisit if the business defines real operating hours.
+
+## 8. "Total/Available" summary counts (Operational Scheduling today panel)
+
+Spec §9 lists "Total/Available Staff Scheduled", "Total/Available Workspace
+Assignments", "Total/Available Resource Assignments" without defining the
+Total/Available split. Implemented as: Total = count of that entity type with
+an active (business_status/status = active) record; Available = Total minus
+however many currently have an ACTIVE assignment right now. In other words,
+"Available" reads as free capacity, not entities without any assignment ever.
