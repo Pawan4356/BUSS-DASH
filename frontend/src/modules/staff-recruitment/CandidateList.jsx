@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { DetailHeader, EmptyState, KebabMenu, StatusBadge, TableSkeleton } from '../../shared/components'
+import { DetailHeader, EmptyState, KebabMenu, PersonCell, StatusBadge, TableSkeleton, Tabs } from '../../shared/components'
 import { CANDIDATE_STATUS } from '../../shared/ui-tags'
 import { useGetRecruitmentQuery, useListCandidatesQuery } from './api'
 import { AddCandidateModal } from './AddCandidateModal'
@@ -39,16 +39,15 @@ export function CandidateList() {
       />
 
       <div className="toolbar">
-        {showB2C && (
-          <button type="button" className={`btn ${tab === 'B2C' ? 'btn-primary' : ''}`} onClick={() => setTab('B2C')}>
-            B2C Applicant
-          </button>
-        )}
-        {showWalkIn && (
-          <button type="button" className={`btn ${tab === 'WALK_IN' ? 'btn-primary' : ''}`} onClick={() => setTab('WALK_IN')}>
-            Walk-in Applicant
-          </button>
-        )}
+        <Tabs
+          ariaLabel="Applicant source"
+          value={tab}
+          onChange={setTab}
+          options={[
+            ...(showB2C ? [{ value: 'B2C', label: 'B2C Applicant' }] : []),
+            ...(showWalkIn ? [{ value: 'WALK_IN', label: 'Walk-in Applicant' }] : []),
+          ]}
+        />
         <div className="toolbar-spacer" />
         {showWalkIn && (
           <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
@@ -66,8 +65,8 @@ export function CandidateList() {
           <table className="table">
             <thead>
               <tr>
-                <th>Account ID</th>
                 <th>Name</th>
+                <th>Account ID</th>
                 <th>Experience</th>
                 <th>Applied Date</th>
                 <th>Status</th>
@@ -77,16 +76,10 @@ export function CandidateList() {
             <tbody>
               {candidates.map((c) => (
                 <tr key={c.id}>
-                  <td>{c.accountId ?? '—'}</td>
                   <td>
-                    <button
-                      type="button"
-                      onClick={() => navigate(c.id)}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
-                    >
-                      {c.name}
-                    </button>
+                    <PersonCell name={c.name} onOpen={() => navigate(c.id)} />
                   </td>
+                  <td>{c.accountId ?? '—'}</td>
                   <td>{c.experience ?? '—'}</td>
                   <td>{new Date(c.appliedDate).toLocaleDateString()}</td>
                   <td>

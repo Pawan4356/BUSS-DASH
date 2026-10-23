@@ -1,5 +1,8 @@
 const RECRUITMENT_DETAIL_INCLUDE = {
-  interviewRounds: { orderBy: { roundNumber: 'asc' } },
+  interviewRounds: {
+    orderBy: { roundNumber: 'asc' },
+    include: { interviewerStaff: { select: { firstName: true, lastName: true } } },
+  },
   candidates: { select: { id: true, status: true } },
 }
 
@@ -11,7 +14,17 @@ export function serializeRecruitmentListItem(recruitment) {
     status: recruitment.status,
     totalCandidates: recruitment.candidates.length,
     hired: recruitment.candidates.filter((c) => c.status === 'HIRED').length,
+    numberOfOpenings: recruitment.numberOfOpenings,
+    experienceRequired: recruitment.experienceRequired,
+    audience: recruitment.audience,
+    launchDate: recruitment.launchDate,
   }
+}
+
+/** Flattens the optional interviewer relation into a display name. */
+function serializeInterviewRound({ interviewerStaff, ...round }) {
+  const staffName = interviewerStaff ? [interviewerStaff.firstName, interviewerStaff.lastName].filter(Boolean).join(' ') : null
+  return { ...round, interviewerName: staffName || round.interviewerManualName || null }
 }
 
 export function serializeRecruitmentDetail(recruitment) {
@@ -25,7 +38,7 @@ export function serializeRecruitmentDetail(recruitment) {
     audience: recruitment.audience,
     interviewRequired: recruitment.interviewRequired,
     launchDate: recruitment.launchDate,
-    interviewRounds: recruitment.interviewRounds,
+    interviewRounds: (recruitment.interviewRounds ?? []).map(serializeInterviewRound),
     createdAt: recruitment.createdAt,
   }
 }

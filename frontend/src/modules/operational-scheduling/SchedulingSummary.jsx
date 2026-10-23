@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { SummaryStats, TableSkeleton } from '../../shared/components'
-import { useGetSchedulingSummaryQuery, useGetSchedulingTrendQuery } from './api'
+import { PersonCell, StatusBadge, SummaryStats, TableSkeleton } from '../../shared/components'
+import { ASSIGNMENT_STATUS } from '../../shared/ui-tags'
+import { dayKey } from '../../shared/time'
+import { useGetSchedulingListQuery, useGetSchedulingSummaryQuery, useGetSchedulingTrendQuery } from './api'
+import { flattenAssignments } from './flattenAssignments'
+import { WorkloadBars } from './WorkloadBars'
 import { WorkloadChart } from './WorkloadChart'
 import { TrendSparkline } from './TrendSparkline'
 
@@ -14,6 +18,7 @@ export function SchedulingSummary() {
   const flags = useSelector((s) => s.auth.flags)
   const { data, isLoading } = useGetSchedulingSummaryQuery(date)
   const { data: trend } = useGetSchedulingTrendQuery(date.slice(0, 7))
+  const { data: list } = useGetSchedulingListQuery(date)
 
   if (isLoading || !data) return <TableSkeleton rows={4} cols={3} />
 
@@ -30,6 +35,27 @@ export function SchedulingSummary() {
           { label: 'Completed Assignments', value: data.today.completedAssignments },
         ]}
       />
+
+      <div className="grid-2">
+        <section>
+          <div className="section-head">
+            <h2 className="section-title">Assignments</h2>
+            <span>{date === today() ? 'Today' : new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+          </div>
+          <div className="card">
+            <AssignmentsList items={list ? flattenAssignments(list) : null} date={date} />
+          </div>
+        </section>
+        <section>
+          <div className="section-head">
+            <h2 className="section-title">Workload</h2>
+            <span>Assigned hours per person</span>
+          </div>
+          <div className="card">
+            <WorkloadBars staff={data.breakdown.staff} />
+          </div>
+        </section>
+      </div>
 
       {flags?.operationalSchedulingPremium && data.workload && (
         <>
@@ -121,5 +147,29 @@ function BreakdownTable({ title, rows, columns }) {
         </table>
       </div>
     </>
+  )
+}
+
+function AssignmentsList({ items, date }) {
+  if (!items) return <div style={{ padding: 16 }}><TableSkeleton rows={3} cols={3} /></div>
+  if (items.length === 0) return <p className="none" style={{ padding: 16, margin: 0 }}>Nothing assigned for this day.</p>
+  const key = dayKey(new Date(`${date}T00:00:00`))
+  return (
+    <ul className="list">
+      {items.map((a) => {
+        const windows = (a.timeWindows ?? []).filter((w) => w.dayOfWeek === key)
+        return (
+          <li key={a.id}>
+            <div className="grow">
+              <PersonCell name={a.staffName} subtitle={`${a.what}, ${a.where}`} fallback="Unassigned" />
+            </div>
+            <span className="none">
+              {a.dedicated ? 'Dedicated' : windows.map((w) => `${w.startTime} – ${w.endTime}`).join(', ') || 'All day'}
+            </span>
+            {a.status && <StatusBadge value={a.status} label={ASSIGNMENT_STATUS[a.status]} />}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

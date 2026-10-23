@@ -36,8 +36,10 @@ export function LoginPage() {
         background: 'var(--bg)',
       }}
     >
-      <form className="card" style={{ padding: 32, width: 340 }} onSubmit={handleSubmit}>
-        <h1 style={{ marginTop: 0, fontSize: 18 }}>Sign in to BUSS-DASH</h1>
+      <form className="card" style={{ padding: 32, width: 360 }} onSubmit={handleSubmit}>
+        <h1 className="page-title" style={{ fontSize: 28, marginBottom: 20 }}>
+          Sign in to PARSOR
+        </h1>
         {error && (
           <div className="banner banner-danger">
             {error.data?.message ?? 'Invalid email or password.'}

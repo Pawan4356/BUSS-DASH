@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { EmptyState, KebabMenu, StatusBadge, SummaryStats, TableSkeleton, useToast } from '../../shared/components'
+import { EmptyState, KebabMenu, SearchInput, StatusBadge, SummaryStats, TableSkeleton, Tabs, useToast } from '../../shared/components'
 import { RECRUITMENT_STATUS, toOptions } from '../../shared/ui-tags'
 import {
   useCloseRecruitmentMutation,
@@ -10,11 +10,19 @@ import {
   useListRecruitmentsQuery,
 } from './api'
 import { CreateRecruitmentModal } from './CreateRecruitmentModal'
+import { RecruitmentPipeline } from './RecruitmentPipeline'
+
+function describeRole(r) {
+  const openings = r.numberOfOpenings ? `${r.numberOfOpenings} opening${r.numberOfOpenings === 1 ? '' : 's'}` : null
+  const audience = r.audience === 'B2C' ? 'public listing' : r.audience === 'INTERNAL' ? 'internal only' : null
+  return [r.employmentType, openings, r.experienceRequired, audience].filter(Boolean).join(', ') || 'No details yet'
+}
 
 export function RecruitmentList() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [creating, setCreating] = useState(false)
+  const [selectedId, setSelectedId] = useState(null)
   const navigate = useNavigate()
   const { push } = useToast()
 
@@ -36,12 +44,17 @@ export function RecruitmentList() {
     }
   }
 
+  // Default to the first role still taking applications, not just the newest.
+  const selected =
+    recruitments?.find((r) => r.id === selectedId) ??
+    recruitments?.find((r) => r.status === 'ACTIVE') ??
+    recruitments?.[0] ??
+    null
+
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Staff Recruitment</h1>
-        </div>
+        <h1 className="page-title">Staff Recruitment</h1>
         <div className="cluster">
           <button type="button" className="btn" onClick={() => navigate('candidates')}>
             Candidate Applications
@@ -65,15 +78,13 @@ export function RecruitmentList() {
       />
 
       <div className="toolbar">
-        <input className="input" style={{ maxWidth: 240 }} placeholder="Search by role…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select className="select" style={{ maxWidth: 180 }} value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          {toOptions(RECRUITMENT_STATUS).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by role" />
+        <Tabs
+          ariaLabel="Filter by status"
+          value={status}
+          onChange={setStatus}
+          options={[{ value: '', label: 'All' }, ...toOptions(RECRUITMENT_STATUS)]}
+        />
       </div>
 
       {isLoading ? (
@@ -81,37 +92,25 @@ export function RecruitmentList() {
       ) : recruitments.length === 0 ? (
         <EmptyState title="No recruitments yet" description="Create your first recruitment posting." />
       ) : (
-        <div className="table-wrap card">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Role</th>
-                <th>Employment Type</th>
-                <th>Status</th>
-                <th>Total Candidates</th>
-                <th>Hired</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
+        <>
+          <div className="card">
+            <ul className="list">
               {recruitments.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => navigate(r.id)}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
-                    >
-                      {r.role}
-                    </button>
-                  </td>
-                  <td>{r.employmentType ?? '—'}</td>
-                  <td>
-                    <StatusBadge value={r.status} label={RECRUITMENT_STATUS[r.status]} />
-                  </td>
-                  <td>{r.totalCandidates}</td>
-                  <td>{r.hired}</td>
-                  <td>
+                <li
+                  key={r.id}
+                  className={`is-selectable${r.id === selected?.id ? ' is-selected' : ''}`}
+                  onClick={() => setSelectedId(r.id)}
+                >
+                  <div className="grow">
+                    <b>{r.role}</b>
+                    <small>{describeRole(r)}</small>
+                  </div>
+                  <span className="none">
+                    {r.totalCandidates} candidate{r.totalCandidates === 1 ? '' : 's'}
+                    {r.hired > 0 && `, ${r.hired} hired`}
+                  </span>
+                  <StatusBadge value={r.status} label={RECRUITMENT_STATUS[r.status]} />
+                  <div onClick={(e) => e.stopPropagation()}>
                     <KebabMenu
                       items={[
                         { label: 'View setting', onClick: () => navigate(r.id) },
@@ -128,12 +127,14 @@ export function RecruitmentList() {
                         { label: 'Edit setting', onClick: () => navigate(r.id) },
                       ]}
                     />
-                  </td>
-                </tr>
+                  </div>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </ul>
+          </div>
+
+          {selected && <RecruitmentPipeline recruitmentId={selected.id} />}
+        </>
       )}
 
       {creating && <CreateRecruitmentModal onClose={() => setCreating(false)} />}

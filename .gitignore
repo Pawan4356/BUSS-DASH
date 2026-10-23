@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 
+parsor-reference-ui.html
+
 # Build output
 dist/
 build/

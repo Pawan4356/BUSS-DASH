@@ -1,23 +1,13 @@
 /** Generic form-in-modal shell for the "+ Add X" / "+ Invite X" flows every module has. */
-export function Modal({ title, onClose, children, width = 420 }) {
+export function Modal({ title, lead, onClose, children, width = 480 }) {
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-      onClick={onClose}
-    >
-      <div className="card" style={{ padding: 24, width, maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
-        <div className="cluster" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 16 }}>{title}</h2>
+    <div role="dialog" aria-modal="true" className="modal-scrim" onClick={onClose}>
+      <div className="card modal" style={{ maxWidth: width }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h2 className="modal-title">{title}</h2>
+            {lead && <p className="modal-lead">{lead}</p>}
+          </div>
           <button type="button" className="btn btn-icon" aria-label="Close" onClick={onClose}>
             ✕
           </button>

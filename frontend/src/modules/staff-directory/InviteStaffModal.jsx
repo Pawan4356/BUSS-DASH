@@ -19,7 +19,11 @@ export function InviteStaffModal({ onClose }) {
   }
 
   return (
-    <Modal title="Invite Staff" onClose={onClose}>
+    <Modal
+      title="Invite Staff"
+      lead="They get an email to set up their account. Until they accept, they show as pending."
+      onClose={onClose}
+    >
       <form onSubmit={handleSubmit}>
         <div className="field">
           <label className="field-label" htmlFor="account-id">

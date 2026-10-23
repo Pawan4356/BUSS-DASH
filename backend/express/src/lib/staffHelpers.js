@@ -5,6 +5,29 @@ const STAFF_DETAIL_INCLUDE = {
   resourceResponsibilities: { include: { resource: { select: { id: true, name: true } } } },
 }
 
+const MODULE_RESPONSIBILITY_LABELS = {
+  staffRecruitment: 'Recruitment',
+  staffAttendance: 'Attendance',
+  operationalScheduling: 'Scheduling',
+}
+
+/** Compact weekly schedule for list views: one entry per working window or off-day. */
+function compactSchedule(entries = []) {
+  return entries.map((e) =>
+    e.isOff ? { dayOfWeek: e.dayOfWeek, isOff: true } : { dayOfWeek: e.dayOfWeek, start: e.startTime, end: e.endTime },
+  )
+}
+
+/** Names (not ids) of everything the staff member looks after, for list chips. */
+function responsibilityNames(staff) {
+  const wr = staff.workResponsibility
+  return {
+    modules: wr ? Object.keys(MODULE_RESPONSIBILITY_LABELS).filter((k) => wr[k]).map((k) => MODULE_RESPONSIBILITY_LABELS[k]) : [],
+    workspaces: (staff.workspaceResponsibilities ?? []).map((r) => r.workspace?.name).filter(Boolean),
+    resources: (staff.resourceResponsibilities ?? []).map((r) => r.resource?.name).filter(Boolean),
+  }
+}
+
 function responsibilitiesCount(staff) {
   const workChecklist = staff.workResponsibility
     ? [
@@ -26,6 +49,8 @@ export function serializeStaffListItem(staff) {
     status: staff.status,
     responsibilitiesCount: responsibilitiesCount(staff),
     archived: staff.archived,
+    weekSchedule: compactSchedule(staff.workingSchedule),
+    responsibilities: responsibilityNames(staff),
   }
 }
 

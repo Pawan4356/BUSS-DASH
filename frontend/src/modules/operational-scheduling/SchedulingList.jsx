@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { EmptyState, StatusBadge, TableSkeleton, useToast } from '../../shared/components'
+import { EmptyState, PersonCell, StatusBadge, TableSkeleton, Tabs, useToast } from '../../shared/components'
 import { ASSIGNMENT_STATUS } from '../../shared/ui-tags'
 import { useCancelAssignmentMutation, useGetSchedulingListQuery } from './api'
 import { AssignModal } from './AssignModal'
@@ -22,24 +22,21 @@ export function SchedulingList() {
   return (
     <div>
       <div className="cluster" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
-        <div className="toolbar" style={{ marginBottom: 0 }}>
-          <button type="button" className={`btn ${tab === 'workspace' ? 'btn-primary' : ''}`} onClick={() => setTab('workspace')}>
-            Workspace Resources
-          </button>
-          <button type="button" className={`btn ${tab === 'independent' ? 'btn-primary' : ''}`} onClick={() => setTab('independent')}>
-            Independent Resources
-          </button>
-          {flags?.operationalSchedulingPremium && (
-            <>
-              <button type="button" className={`btn ${tab === 'staff' ? 'btn-primary' : ''}`} onClick={() => setTab('staff')}>
-                Staff
-              </button>
-              <button type="button" className={`btn ${tab === 'quick' ? 'btn-primary' : ''}`} onClick={() => setTab('quick')}>
-                Quick Assign
-              </button>
-            </>
-          )}
-        </div>
+        <Tabs
+          ariaLabel="Assignment list"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'workspace', label: 'Workspace Resources' },
+            { value: 'independent', label: 'Independent Resources' },
+            ...(flags?.operationalSchedulingPremium
+              ? [
+                  { value: 'staff', label: 'Staff' },
+                  { value: 'quick', label: 'Quick Assign' },
+                ]
+              : []),
+          ]}
+        />
         <input type="date" className="input" style={{ maxWidth: 170 }} value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
 
@@ -70,11 +67,12 @@ function AssignmentRow({ a }) {
   const [cancelAssignment] = useCancelAssignmentMutation()
   const { push } = useToast()
   return (
-    <div className="cluster" style={{ justifyContent: 'space-between', fontSize: 13, padding: '4px 0' }}>
-      <span>
-        {a.staffName} · {a.timeWindows.map((w) => `${w.dayOfWeek} ${w.startTime}-${w.endTime}`).join(', ')}
-        {a.note && <span className="text-muted"> — {a.note}</span>}
-      </span>
+    <div className="assign-row">
+      <PersonCell
+        name={a.staffName}
+        subtitle={[a.timeWindows.map((w) => `${w.dayOfWeek} ${w.startTime}–${w.endTime}`).join(', '), a.note].filter(Boolean).join(' · ')}
+        fallback="Unassigned"
+      />
       <span className="cluster">
         <StatusBadge value={a.status} label={ASSIGNMENT_STATUS[a.status]} />
         <button
@@ -129,8 +127,8 @@ function WorkspaceResourcesTab({ data, isPast, onAssign }) {
     <div className="stack">
       {data.workspaceResources.map((w) => (
         <div className="card" style={{ padding: 16 }} key={w.id}>
-          <div className="cluster" style={{ justifyContent: 'space-between' }}>
-            <strong>{w.name}</strong>
+          <div className="cluster" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
+            <strong className="workspace-name">{w.name}</strong>
             {!isPast && (
               <button type="button" className="btn btn-sm" onClick={() => onAssign({ workspaceId: w.id })}>
                 + Assign
@@ -174,7 +172,7 @@ function StaffTab({ staff }) {
     <div className="stack">
       {staff.map((s) => (
         <div className="card" style={{ padding: 16 }} key={s.id}>
-          <strong>{s.name}</strong>
+          <strong className="workspace-name">{s.name}</strong>
           {s.schedule.length === 0 ? (
             <p className="text-muted" style={{ fontSize: 13 }}>
               No current schedule

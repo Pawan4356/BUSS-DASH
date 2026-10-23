@@ -6,27 +6,13 @@
 export function ConfirmDialog({ open, title, description, confirmLabel = 'Confirm', danger, onConfirm, onCancel }) {
   if (!open) return null
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-      onClick={onCancel}
-    >
-      <div className="card" style={{ padding: 24, maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
-        <h2 id="confirm-dialog-title" style={{ margin: '0 0 8px', fontSize: 16 }}>
+    <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="modal-scrim" onClick={onCancel}>
+      <div className="card modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+        <h2 id="confirm-dialog-title" className="modal-title">
           {title}
         </h2>
-        {description && <p className="text-muted" style={{ marginTop: 0 }}>{description}</p>}
-        <div className="cluster" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+        {description && <p className="modal-lead">{description}</p>}
+        <div className="modal-foot">
           <button type="button" className="btn" onClick={onCancel}>
             Cancel
           </button>

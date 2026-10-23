@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Tabs } from '../../shared/components'
 import { SchedulingSummary } from './SchedulingSummary'
 import { SchedulingList } from './SchedulingList'
 
@@ -12,12 +13,15 @@ export function OperationalSchedulingHome() {
       </div>
 
       <div className="toolbar">
-        <button type="button" className={`btn ${tab === 'summary' ? 'btn-primary' : ''}`} onClick={() => setTab('summary')}>
-          Summary
-        </button>
-        <button type="button" className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')}>
-          List
-        </button>
+        <Tabs
+          ariaLabel="Scheduling view"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'summary', label: 'Summary' },
+            { value: 'list', label: 'List' },
+          ]}
+        />
       </div>
 
       {tab === 'summary' ? <SchedulingSummary /> : <SchedulingList />}

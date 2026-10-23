@@ -4,9 +4,11 @@ import {
   ConfirmDialog,
   EmptyState,
   KebabMenu,
+  SearchInput,
   StatusBadge,
   SummaryStats,
   TableSkeleton,
+  Tabs,
   useToast,
 } from '../../shared/components'
 import { BUSINESS_STATUS, OPERATIONAL_STATUS } from '../../shared/ui-tags'
@@ -42,12 +44,15 @@ export function ResourceDirectoryHome() {
       />
 
       <div className="toolbar">
-        <button type="button" className={`btn ${tab === 'workspaces' ? 'btn-primary' : ''}`} onClick={() => setTab('workspaces')}>
-          Workspaces
-        </button>
-        <button type="button" className={`btn ${tab === 'resources' ? 'btn-primary' : ''}`} onClick={() => setTab('resources')}>
-          Resources
-        </button>
+        <Tabs
+          ariaLabel="Directory section"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'workspaces', label: 'Workspaces', count: summary?.totalWorkspaces },
+            { value: 'resources', label: 'Resources', count: summary?.totalResources },
+          ]}
+        />
       </div>
 
       {tab === 'workspaces' ? <WorkspacesTab /> : <ResourcesTab />}
@@ -92,11 +97,7 @@ function WorkspacesTab() {
           {workspaces.map((w) => (
             <div key={w.id} className="card stat-tile">
               <div className="cluster" style={{ justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  onClick={() => navigate(`workspaces/${w.id}`)}
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: 600, textAlign: 'left' }}
-                >
+                <button type="button" className="row-link workspace-name" onClick={() => navigate(`workspaces/${w.id}`)}>
                   {w.name}
                 </button>
                 <KebabMenu
@@ -156,7 +157,7 @@ function ResourcesTab() {
   return (
     <div>
       <div className="toolbar">
-        <input className="input" style={{ maxWidth: 240 }} placeholder="Search resources…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search resources" />
         <select className="select" style={{ maxWidth: 200 }} value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="name-asc">Name A–Z</option>
           <option value="name-desc">Name Z–A</option>
@@ -191,11 +192,7 @@ function ResourcesTab() {
               {resources.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`resources/${r.id}`)}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
-                    >
+                    <button type="button" className="row-link" onClick={() => navigate(`resources/${r.id}`)}>
                       {r.name}
                     </button>
                   </td>

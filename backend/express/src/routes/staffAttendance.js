@@ -83,10 +83,13 @@ staffAttendanceRouter.get(
         return {
           staffId: s.id,
           name: [s.firstName, s.lastName].filter(Boolean).join(' ') || null,
+          title: s.title ?? null,
           workingSchedule: daySchedule.map((w) => (w.isOff ? { isOff: true } : { start: w.startTime, end: w.endTime })),
           checkIn: record?.checkIn ?? null,
           checkOut: record?.checkOut ?? null,
           status: record?.status ?? 'ABSENT',
+          lateCheckIn: record?.lateCheckIn ?? false,
+          earlyCheckOut: record?.earlyCheckOut ?? false,
           stayTimeMinutes: record ? stayTimeMinutes(record.checkIn, record.checkOut) : null,
         }
       })

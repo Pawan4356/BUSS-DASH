@@ -1,17 +1,27 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import {
   ConfirmDialog,
   EmptyState,
   KebabMenu,
+  PersonCell,
+  SearchInput,
   StatusBadge,
   SummaryStats,
   TableSkeleton,
+  Tabs,
   useToast,
 } from '../../shared/components'
 import { STAFF_STATUS, toOptions } from '../../shared/ui-tags'
 import { useDeleteStaffMutation, useGetStaffSummaryQuery, useListStaffQuery } from './api'
 import { InviteStaffModal } from './InviteStaffModal'
+import { useGetAttendanceRegisterQuery } from '../staff-attendance/api'
+import { todayIso } from '../../shared/time'
+import { useNowHours } from '../../shared/time/useNow'
+import { FloorTimeline } from './FloorTimeline'
+import { WeekStrip } from './WeekStrip'
+import { todayState } from './todayState'
 
 export function StaffDirectoryList() {
   const [search, setSearch] = useState('')
@@ -30,6 +40,15 @@ export function StaffDirectoryList() {
   })
   const [deleteStaff] = useDeleteStaffMutation()
 
+  // The floor timeline always shows everyone working today, independent of
+  // the table's search/status filters.
+  const flags = useSelector((st) => st.auth.flags)
+  const hasRegister = Boolean(flags?.staffAttendance)
+  const now = useNowHours()
+  const { data: everyone } = useListStaffQuery({ archived: false })
+  const { data: register } = useGetAttendanceRegisterQuery({ date: todayIso() }, { skip: !hasRegister })
+  const registerByStaff = useMemo(() => new Map((register?.rows ?? []).map((r) => [r.staffId, r])), [register])
+
   async function confirmDelete() {
     try {
       await deleteStaff(pendingDelete.id).unwrap()
@@ -44,9 +63,7 @@ export function StaffDirectoryList() {
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Staff Directory</h1>
-        </div>
+        <h1 className="page-title">Staff Directory</h1>
         <button type="button" className="btn btn-primary" onClick={() => setInviting(true)}>
           + Invite Staff
         </button>
@@ -60,26 +77,21 @@ export function StaffDirectoryList() {
         ]}
       />
 
+      {everyone && <FloorTimeline staff={everyone} registerByStaff={registerByStaff} hasRegister={hasRegister} now={now} />}
+
+
       <div className="toolbar">
-        <input
-          className="input"
-          style={{ maxWidth: 240 }}
-          placeholder="Search staff…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by name or title" />
+        <Tabs
+          ariaLabel="Filter by status"
+          value={status}
+          onChange={setStatus}
+          options={[{ value: '', label: 'All' }, ...toOptions(STAFF_STATUS)]}
         />
-        <select className="select" style={{ maxWidth: 180 }} value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          {toOptions(STAFF_STATUS).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
         <div className="toolbar-spacer" />
-        <label className="cluster" style={{ fontSize: 13 }}>
+        <label className="check">
           <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
-          Archived
+          Show archived
         </label>
       </div>
 
@@ -96,10 +108,11 @@ export function StaffDirectoryList() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Title</th>
-                <th>Employment Type</th>
+                <th>Employment</th>
+                <th>Working week</th>
+                <th>Today</th>
+                <th>Responsible for</th>
                 <th>Status</th>
-                <th>Responsibilities</th>
                 <th aria-label="Actions" />
               </tr>
             </thead>
@@ -107,20 +120,21 @@ export function StaffDirectoryList() {
               {staff.map((s) => (
                 <tr key={s.id}>
                   <td>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/staff-directory/${s.id}`)}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
-                    >
-                      {s.name ?? <span className="text-muted">Awaiting details</span>}
-                    </button>
+                    <PersonCell name={s.name} subtitle={s.title} onOpen={() => navigate(`/staff-directory/${s.id}`)} />
                   </td>
-                  <td>{s.title ?? '—'}</td>
                   <td>{s.employmentType ?? '—'}</td>
+                  <td>
+                    <WeekStrip schedule={s.weekSchedule} />
+                  </td>
+                  <td className="today-cell">
+                    <TodayCell st={todayState(s, registerByStaff.get(s.id), now, hasRegister)} />
+                  </td>
+                  <td>
+                    <ResponsibilityChips r={s.responsibilities} />
+                  </td>
                   <td>
                     <StatusBadge value={s.status} label={STAFF_STATUS[s.status]} />
                   </td>
-                  <td>{s.responsibilitiesCount}</td>
                   <td>
                     <KebabMenu
                       items={[
@@ -150,6 +164,37 @@ export function StaffDirectoryList() {
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
       />
+    </div>
+  )
+}
+
+function TodayCell({ st }) {
+  if (st.kind === 'inactive') return <span className="none">—</span>
+  if (st.kind === 'missing') return <span className="is-missing">{st.label}</span>
+  return (
+    <>
+      <span>{st.label}</span>
+      {st.late && <span className="is-late"> · late</span>}
+    </>
+  )
+}
+
+function ResponsibilityChips({ r }) {
+  const modules = r?.modules ?? []
+  const places = [...(r?.workspaces ?? []), ...(r?.resources ?? [])]
+  if (modules.length + places.length === 0) return <span className="none">None assigned</span>
+  return (
+    <div className="chips">
+      {modules.map((m) => (
+        <span className="chip chip-duty" key={`m-${m}`}>
+          {m}
+        </span>
+      ))}
+      {places.map((p) => (
+        <span className="chip" key={`p-${p}`}>
+          {p}
+        </span>
+      ))}
     </div>
   )
 }
