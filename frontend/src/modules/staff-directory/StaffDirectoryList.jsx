@@ -56,7 +56,7 @@ export function StaffDirectoryList() {
         loading={summaryLoading}
         stats={[
           { label: 'Total Staff', value: summary?.totalStaff ?? '–' },
-          { label: 'Pending Invitations', value: summary?.pendingInvitations ?? '–' },
+          { label: 'Pending Invitations', value: summary?.pendingInvitations ?? '–', tone: 'warning' },
         ]}
       />
 

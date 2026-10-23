@@ -56,11 +56,11 @@ export function RecruitmentList() {
         loading={summaryLoading}
         stats={[
           { label: 'Total Open Positions', value: summary?.totalOpenPositions ?? '–' },
-          { label: 'Active Recruitments', value: summary?.activeRecruitments ?? '–' },
+          { label: 'Active Recruitments', value: summary?.activeRecruitments ?? '–', tone: 'positive' },
           { label: 'Applications Received', value: summary?.applicationsReceived ?? '–' },
-          { label: 'Interviews Scheduled', value: summary?.interviewsScheduled ?? '–' },
+          { label: 'Interviews Scheduled', value: summary?.interviewsScheduled ?? '–', tone: 'info' },
           { label: 'Offers Sent', value: summary?.offersSent ?? '–' },
-          { label: 'Hired Candidates', value: summary?.hiredCandidates ?? '–' },
+          { label: 'Hired Candidates', value: summary?.hiredCandidates ?? '–', tone: 'positive' },
         ]}
       />
 

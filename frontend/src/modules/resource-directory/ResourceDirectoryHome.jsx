@@ -35,9 +35,9 @@ export function ResourceDirectoryHome() {
         stats={[
           { label: 'Total Workspaces', value: summary?.totalWorkspaces ?? '–' },
           { label: 'Total Resources', value: summary?.totalResources ?? '–' },
-          { label: 'Active Resources', value: summary?.activeResources ?? '–' },
-          { label: 'Under Maintenance', value: summary?.underMaintenance ?? '–' },
-          { label: 'Awaiting Scheduling', value: summary?.awaitingScheduling ?? '–' },
+          { label: 'Active Resources', value: summary?.activeResources ?? '–', tone: 'positive' },
+          { label: 'Under Maintenance', value: summary?.underMaintenance ?? '–', tone: 'warning' },
+          { label: 'Awaiting Scheduling', value: summary?.awaitingScheduling ?? '–', tone: 'info' },
         ]}
       />
 

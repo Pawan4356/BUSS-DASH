@@ -1,10 +1,10 @@
 /**
  * Monthly usage trend (spec §9). Three series (staff/workspace/resource
- * hours) over a month is awkward to read as overlapping lines in a strict
- * grayscale palette, so each gets its own labeled sparkline row instead of
- * color-coding a shared axis.
+ * hours) read poorly as overlapping lines, so each gets its own labeled
+ * sparkline row. `color` identifies the series; the label carries a matching
+ * swatch so the hue is never the only cue.
  */
-export function TrendSparkline({ label, points, valueKey }) {
+export function TrendSparkline({ label, points, valueKey, color = 'var(--text)' }) {
   const values = points.map((p) => p[valueKey])
   const max = Math.max(1, ...values)
   const total = values.reduce((sum, v) => sum + v, 0)
@@ -12,7 +12,10 @@ export function TrendSparkline({ label, points, valueKey }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div className="cluster" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
-        <span className="field-label">{label}</span>
+        <span className="field-label">
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: color, marginRight: 6 }} />
+          {label}
+        </span>
         <span className="text-muted" style={{ fontSize: 12 }}>
           {total.toFixed(1)}h this month
         </span>
@@ -26,8 +29,8 @@ export function TrendSparkline({ label, points, valueKey }) {
               flex: 1,
               height: `${(p[valueKey] / max) * 100}%`,
               minHeight: p[valueKey] > 0 ? 2 : 1,
-              background: 'var(--text)',
-              opacity: 0.55,
+              background: color,
+              borderRadius: '1px 1px 0 0',
             }}
           />
         ))}

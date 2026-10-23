@@ -25,8 +25,8 @@ export function SchedulingSummary() {
           { label: 'Staff Scheduled', value: `${data.today.totalStaffScheduled - data.today.availableStaff}/${data.today.totalStaffScheduled}` },
           { label: 'Workspace Assignments', value: `${data.today.totalWorkspaceAssignments - data.today.availableWorkspaces}/${data.today.totalWorkspaceAssignments}` },
           { label: 'Resource Assignments', value: `${data.today.totalResourceAssignments - data.today.availableResources}/${data.today.totalResourceAssignments}` },
-          { label: 'Active Assignments', value: data.today.activeAssignments },
-          { label: 'Upcoming Assignments', value: data.today.upcomingAssignments },
+          { label: 'Active Assignments', value: data.today.activeAssignments, tone: 'positive' },
+          { label: 'Upcoming Assignments', value: data.today.upcomingAssignments, tone: 'info' },
           { label: 'Completed Assignments', value: data.today.completedAssignments },
         ]}
       />
@@ -85,9 +85,9 @@ export function SchedulingSummary() {
         <>
           <h2 className="section-title">Monthly Usage Trend</h2>
           <div className="card" style={{ padding: 16 }}>
-            <TrendSparkline label="Staff Hours" points={trend.points} valueKey="staffHours" />
-            <TrendSparkline label="Workspace Hours" points={trend.points} valueKey="workspaceHours" />
-            <TrendSparkline label="Resource Hours" points={trend.points} valueKey="resourceHours" />
+            <TrendSparkline label="Staff Hours" points={trend.points} valueKey="staffHours" color="var(--ocean)" />
+            <TrendSparkline label="Workspace Hours" points={trend.points} valueKey="workspaceHours" color="var(--mint)" />
+            <TrendSparkline label="Resource Hours" points={trend.points} valueKey="resourceHours" color="var(--sun)" />
           </div>
         </>
       )}

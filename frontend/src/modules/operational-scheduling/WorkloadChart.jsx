@@ -1,7 +1,8 @@
 /**
  * Hourly concurrent-assignment bar chart (premium summary, spec §9). A
- * single grayscale series — magnitude only, so bar height + a native title
- * tooltip is enough; the peak hour gets an outline instead of a second color.
+ * single series — magnitude only, so bar height + a native title tooltip is
+ * enough. Bars stay gray; only the peak hour is lifted out in ocean, the
+ * same "look here" signal used for focus and upcoming items.
  */
 export function WorkloadChart({ hours, peakHour }) {
   const max = Math.max(1, ...hours)
@@ -24,10 +25,8 @@ export function WorkloadChart({ hours, peakHour }) {
               flex: 1,
               height: `${(count / max) * 100}%`,
               minHeight: count > 0 ? 3 : 1,
-              background: 'var(--text)',
-              opacity: hour === peakHour ? 1 : 0.45,
-              outline: hour === peakHour ? '2px solid var(--text)' : 'none',
-              outlineOffset: 1,
+              background: hour === peakHour ? 'var(--ocean)' : 'var(--gray-400)',
+              borderRadius: '2px 2px 0 0',
             }}
           />
         ))}
@@ -44,6 +43,7 @@ export function WorkloadChart({ hours, peakHour }) {
         </span>
       </div>
       <p className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ocean)', marginRight: 6 }} />
         Peak hour: {peakHour != null ? `${String(peakHour).padStart(2, '0')}:00` : 'No assignments today'}
       </p>
     </div>

@@ -46,12 +46,12 @@ export function AttendanceRegister() {
         loading={summaryLoading}
         stats={[
           { label: 'Total Staff', value: summary?.totalStaff ?? '–' },
-          { label: 'Present Today', value: summary?.presentToday ?? '–' },
-          { label: 'Absent Today', value: summary?.absentToday ?? '–' },
-          { label: 'On Leave', value: summary?.onLeave ?? '–' },
+          { label: 'Present Today', value: summary?.presentToday ?? '–', tone: 'positive' },
+          { label: 'Absent Today', value: summary?.absentToday ?? '–', tone: 'danger' },
+          { label: 'On Leave', value: summary?.onLeave ?? '–', tone: 'warning' },
           { label: 'Off Today', value: summary?.offToday ?? '–' },
-          { label: 'Late Check-ins', value: summary?.lateCheckIns ?? '–' },
-          { label: 'Early Check-outs', value: summary?.earlyCheckOuts ?? '–' },
+          { label: 'Late Check-ins', value: summary?.lateCheckIns ?? '–', tone: 'warning' },
+          { label: 'Early Check-outs', value: summary?.earlyCheckOuts ?? '–', tone: 'warning' },
         ]}
       />
 
