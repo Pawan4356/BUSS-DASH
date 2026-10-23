@@ -10,16 +10,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      // Only the three modules under test (+ the helpers they depend on)
+      // The three modules under test, the account profile, and the helpers they use
       include: [
         'backend/express/src/routes/auth.js',
         'backend/express/src/routes/staffDirectory.js',
         'backend/express/src/routes/staffAttendance.js',
+        'backend/express/src/routes/profile.js',
         'backend/express/src/middleware/auth.js',
         'backend/express/src/middleware/requireFlag.js',
         'backend/express/src/lib/entitlements.js',
         'backend/express/src/lib/staffHelpers.js',
         'backend/express/src/lib/attendanceHelpers.js',
+        'backend/express/src/lib/profileHelpers.js',
         'backend/express/src/lib/asyncHandler.js',
       ],
     },

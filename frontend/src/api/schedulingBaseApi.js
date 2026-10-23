@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
 // Operational Scheduling talks to the FastAPI service directly (see
-// docs/decisions.md #2) — separate base URL, same bearer token as the
+// README.md › Design decisions #2) — separate base URL, same bearer token as the
 // Express-backed baseApi.
 export const schedulingApi = createApi({
   reducerPath: 'schedulingApi',

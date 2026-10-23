@@ -11,7 +11,8 @@
     "test": "vitest run --config ../../testScripts/vitest.config.js",
     "test:blackbox": "vitest run --config ../../testScripts/vitest.config.js ../../testScripts/tests/blackbox",
     "test:whitebox": "vitest run --config ../../testScripts/vitest.config.js ../../testScripts/tests/whitebox",
-    "test:coverage": "vitest run --config ../../testScripts/vitest.config.js --coverage"
+    "test:coverage": "vitest run --config ../../testScripts/vitest.config.js --coverage",
+    "test:cases": "node ../../testScripts/generateTestCases.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

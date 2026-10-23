@@ -16,7 +16,7 @@ staffRecruitmentRouter.use(requireAuth, requireFlag(FLAGS.STAFF_RECRUITMENT))
 
 // "Offers Sent" has no dedicated candidate status in the spec's 4-value
 // enum (Applied/Shortlisted/Rejected/Hired) — approximated as Shortlisted
-// pending clarification. See docs/decisions.md.
+// pending clarification. See README.md › Design decisions #6.
 staffRecruitmentRouter.get(
   '/summary',
   asyncHandler(async (req, res) => {

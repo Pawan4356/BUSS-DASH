@@ -58,8 +58,8 @@ model Business {
   attendance   AttendanceRecord[]
 }
 
-/// Seven entitlement flags gating each dashboard/feature. verification_level
-/// is deliberately excluded — see spec §3 open question / docs/decisions.md.
+/// Six entitlement flags gating each dashboard/feature. verification_level
+/// is deliberately excluded — see README.md › Design decisions #3.
 model BusinessFlags {
   id                           String   @id @default(cuid())
   businessId                   String   @unique

@@ -25,7 +25,7 @@ const RESOURCE_LIST_INCLUDE = {
   responsibleStaff: { include: { staff: { select: { id: true, firstName: true, lastName: true } } } },
 }
 
-// See docs/decisions.md #4 — no fields were given for this summary in the raw spec.
+// See README.md › Design decisions #4 — no fields were given for this summary in the raw spec.
 resourceDirectoryRouter.get(
   '/summary',
   asyncHandler(async (req, res) => {

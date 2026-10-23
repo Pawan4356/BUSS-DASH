@@ -1,7 +1,7 @@
 // Single source of truth for every label/tag shown across modules.
 // The raw spec used inconsistent casing per module (businss_status,
 // oprational_status, sheduling, ...) — every module should import
-// labels from here instead of hardcoding strings. See docs/decisions.md #1.
+// labels from here instead of hardcoding strings. See README.md › Design decisions #1.
 
 export const FIELD_LABELS = {
   STATUS: 'Status',

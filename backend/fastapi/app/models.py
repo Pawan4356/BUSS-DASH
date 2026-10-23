@@ -2,7 +2,7 @@
 SQLAlchemy models mirroring the Prisma schema (prisma/schema.prisma) — this
 service reads/writes the same Postgres database Express/Prisma owns. Only the
 tables the scheduling engine actually touches are modeled here; Prisma remains
-the source of truth for the schema itself (see docs/decisions.md #2).
+the source of truth for the schema itself (see README.md › Design decisions #2).
 
 Enum-typed Postgres columns are declared as plain String — Prisma writes the
 same label set (e.g. "AVAILABLE"/"NOT_AVAILABLE") we read/write here, so a

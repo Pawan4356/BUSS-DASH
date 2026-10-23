@@ -71,3 +71,37 @@ describe('WB-STAFF  serializeStaffDetail', () => {
     expect(Object.keys(STAFF_DETAIL_INCLUDE).sort()).toEqual(['resourceResponsibilities', 'workResponsibility', 'workingSchedule', 'workspaceResponsibilities'])
   })
 })
+
+describe('WB-STAFF  serializeStaffListItem list-chip fields', () => {
+  it('weekSchedule: undefined workingSchedule -> [] (default-parameter branch)', () => {
+    expect(serializeStaffListItem(base).weekSchedule).toEqual([])
+  })
+  it('weekSchedule: off-day vs working window (isOff ternary, both branches)', () => {
+    const item = serializeStaffListItem({
+      ...base,
+      workingSchedule: [
+        { dayOfWeek: 'MON', isOff: false, startTime: '09:00', endTime: '17:00', id: 'x', staffId: 's1' },
+        { dayOfWeek: 'SUN', isOff: true, startTime: null, endTime: null },
+      ],
+    })
+    expect(item.weekSchedule).toEqual([
+      { dayOfWeek: 'MON', start: '09:00', end: '17:00' },
+      { dayOfWeek: 'SUN', isOff: true },
+    ])
+  })
+  it('responsibilities: no workResponsibility row and no lists -> all empty (wr ? : [] and ?? [] branches)', () => {
+    expect(serializeStaffListItem(base).responsibilities).toEqual({ modules: [], workspaces: [], resources: [] })
+  })
+  it('responsibilities: only true module flags become labels, in fixed order', () => {
+    const wr = { staffRecruitment: false, staffAttendance: true, operationalScheduling: true }
+    expect(serializeStaffListItem({ ...base, workResponsibility: wr }).responsibilities.modules).toEqual(['Attendance', 'Scheduling'])
+  })
+  it('responsibilities: relation names are listed; missing relation / name is dropped (filter(Boolean))', () => {
+    const item = serializeStaffListItem({
+      ...base,
+      workspaceResponsibilities: [{ workspace: { name: 'Ward A' } }, { workspace: null }],
+      resourceResponsibilities: [{ resource: { name: 'X-ray' } }, { resource: { name: '' } }],
+    })
+    expect(item.responsibilities).toEqual({ modules: [], workspaces: ['Ward A'], resources: ['X-ray'] })
+  })
+})

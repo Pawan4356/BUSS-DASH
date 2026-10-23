@@ -4,7 +4,7 @@ recomputation, and the utilization/workload aggregation behind the
 Operational Scheduling summary (spec §9).
 
 Utilization assumptions (no business-hours concept exists in the spec, so a
-pragmatic default was picked — see docs/decisions.md #7):
+pragmatic default was picked — see README.md › Design decisions #7):
   - Every day is treated as a 24-hour capacity window for Utilization %.
   - "Overtime Hours" (staff) = hours assigned beyond an 8-hour standard day.
   - A resource's "Maintenance Hours" = the full day when businessStatus is

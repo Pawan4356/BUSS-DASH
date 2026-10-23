@@ -71,6 +71,14 @@ describe('BB-AUTH  POST /auth/login', () => {
     const me = await request(app).get('/auth/me').set('Authorization', `Bearer ${login.body.token}`)
     expect(me.status).toBe(200)
   })
+
+  it('TC-A14 login response includes the account profile (all null until filled in)', async () => {
+    const res = await request(app).post('/auth/login').send({ email: 'owner@demo.test', password: PASSWORD })
+    expect(res.body.profile).toMatchObject({ firstName: null, lastName: null, displayName: null, avatar: null })
+    Object.assign(fake.prisma._db.account.find((a) => a.id === 'acc1'), { firstName: 'Kavita', lastName: 'Raman', avatar: 'preset:person-coral' })
+    const again = await request(app).post('/auth/login').send({ email: 'owner@demo.test', password: PASSWORD })
+    expect(again.body.profile).toMatchObject({ displayName: 'Kavita Raman', avatar: 'preset:person-coral' })
+  })
 })
 
 describe('BB-AUTH  GET /auth/me  (session / token validation)', () => {
@@ -114,6 +122,14 @@ describe('BB-AUTH  GET /auth/me  (session / token validation)', () => {
     // token). The observable server behaviour: a request with no token is rejected.
     const res = await request(app).get('/auth/me')
     expect(res.status).toBe(401)
+  })
+
+  it('TC-A15 /auth/me returns the same profile as login (used to restore the session on reload)', async () => {
+    Object.assign(fake.prisma._db.account.find((a) => a.id === 'acc1'), { firstName: 'Kavita', jobTitle: 'Medical Director' })
+    const login = await request(app).post('/auth/login').send({ email: 'owner@demo.test', password: PASSWORD })
+    const me = await request(app).get('/auth/me').set(bearer('acc1'))
+    expect(me.body.profile).toEqual(login.body.profile)
+    expect(me.body.profile).toMatchObject({ firstName: 'Kavita', jobTitle: 'Medical Director' })
   })
 })
 

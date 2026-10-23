@@ -28,7 +28,7 @@ So the data always looks current. For example, today's attendance register shows
 who are checked in right now, people who have finished their shift, and people whose shift
 hasn't started yet.
 
-> Re-running the seed wipes any changes made through the UI in these four businesses.
+> Re-running the seed wipes any changes made through the UI in these five businesses.
 > Businesses you created yourself are left alone.
 
 ---
@@ -36,6 +36,9 @@ hasn't started yet.
 ## 2. Sign-in accounts
 
 **Every account uses the password `Parsor@2026`.**
+
+The Avatar column shows the preset key; the database stores it as `preset:<key>`
+(for example `preset:person-coral`).
 
 ### Meridian Health Clinic: every module unlocked
 
@@ -308,12 +311,17 @@ the field; each field is limited to 120 characters; an avatar must be a known pr
 valid image data URL. A wrong current password returns `400`, not `401`, so the frontend's
 "log out on 401" handler doesn't sign the user out.
 
+These rules, the avatar formats and size limits, and the frontend/backend preset-list match
+are covered by `testScripts/tests/blackbox/profile.blackbox.test.js` and
+`testScripts/tests/whitebox/profileHelpers.whitebox.test.js`.
+
 ---
 
 ## 6. Adding or changing seed data
 
 Each company is a plain object in `backend/express/src/seed-data/`. Add a new file and list
-it in `seed-data/index.js`. The runner handles the rest.
+it in `seed-data/index.js`. The runner handles the rest. If you add a column to the Prisma
+schema, add it here too, so the demo data shows it.
 
 | Key | Shape |
 |---|---|

@@ -73,6 +73,20 @@ describe('BB-ATT  Register  GET /register', () => {
     seedStaff(fake.prisma, { businessId: 'biz3', firstName: 'Foreign' })
     expect((await api('get', `/register?date=${DATE}`)).body.rows.map((r) => r.name)).toEqual(['Rohan Patel'])
   })
+
+  it('TC-T40 register row shows job title and the late / early flags of the stored record', async () => {
+    const before = (await api('get', `/register?date=${DATE}`)).body.rows[0]
+    expect(before).toMatchObject({ title: 'Software Engineer', lateCheckIn: false, earlyCheckOut: false })
+    await mark(rohan.id, { checkIn: at('09:20'), checkOut: at('16:30') })
+    const after = (await api('get', `/register?date=${DATE}`)).body.rows[0]
+    expect(after).toMatchObject({ lateCheckIn: true, earlyCheckOut: true })
+  })
+
+  it('TC-T41 staff without a job title -> title null (not undefined / missing)', async () => {
+    seedStaff(fake.prisma, { firstName: 'Aditi', lastName: 'Shah' })
+    const row = (await api('get', `/register?date=${DATE}`)).body.rows.find((r) => r.name === 'Aditi Shah')
+    expect(row).toHaveProperty('title', null)
+  })
 })
 
 describe('BB-ATT  Check-in / check-out  PATCH /register/:staffId', () => {

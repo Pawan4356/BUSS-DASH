@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import request from 'supertest'
+import express from 'express'
 import { buildApp, freshWorld, bearer, fake } from '../helpers/testApp.js'
 import { seedStaff, seedSchedule } from '../helpers/fakePrisma.js'
 
@@ -208,5 +209,40 @@ describe('WB-PATH  GET /staff-attendance/staff/:id/history — month arithmetic'
     const { gte, lt } = spy.mock.calls[0][0].where.date
     expect(gte.toISOString()).toBe('2026-12-01T00:00:00.000Z')
     expect(lt.toISOString()).toBe('2027-01-01T00:00:00.000Z')
+  })
+})
+
+describe('WB-PATH  /profile handlers', () => {
+  // Without a JSON body parser req.body is undefined, which drives the
+  // `req.body ?? {}` fallback in both handlers (unreachable through src/index.js).
+  let bare
+  beforeEach(async () => {
+    const { profileRouter } = await import('../../../backend/express/src/routes/profile.js')
+    bare = express().use('/profile', profileRouter)
+  })
+
+  it('PATCH with no parsed body -> treated as {} -> 200 no-op, account.update called with empty data', async () => {
+    const spy = vi.spyOn(fake.prisma.account, 'update')
+    const res = await request(bare).patch('/profile').set(bearer('acc1'))
+    expect(res.status).toBe(200)
+    expect(spy).toHaveBeenCalledWith({ where: { id: 'acc1' }, data: {} })
+  })
+
+  it('POST /password with no parsed body -> treated as {} -> 400 "required"', async () => {
+    const res = await request(bare).post('/profile/password').set(bearer('acc1'))
+    expect(res.status).toBe(400)
+    expect(res.body.message).toBe('Current and new password are required')
+  })
+
+  it('PATCH validation error returns BEFORE touching the database', async () => {
+    const spy = vi.spyOn(fake.prisma.account, 'update')
+    expect((await request(app).patch('/profile').set(bearer('acc1')).send({ firstName: 1 })).status).toBe(400)
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('POST /password with a wrong current password never writes', async () => {
+    const spy = vi.spyOn(fake.prisma.account, 'update')
+    await request(app).post('/profile/password').set(bearer('acc1')).send({ currentPassword: 'nope', newPassword: 'long-enough' })
+    expect(spy).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,7 @@
-# Practical 11 — Testing the 3 implemented modules (BUSS-DASH)
+# Practical 11 — Testing the Express backend (BUSS-DASH / PARSOR)
 
-Modules under test: **Authentication & Entitlement**, **Staff Directory**, **Staff Attendance**
+Modules under test: **Authentication & Entitlement**, **Staff Directory**, **Staff Attendance**,
+and the **Account Profile** (`/profile`, avatar, password change)
 Stack under test: the real repo code (Node/Express + Prisma). Tests run with **no database**:
 Prisma is replaced by a small in-memory fake (`helpers/fakePrisma.js`), the Express routers and
 middleware run unmodified.
@@ -21,42 +22,47 @@ npm install
 | `npm run test:blackbox --workspace backend/express` | black-box only |
 | `npm run test:whitebox --workspace backend/express` | white-box only |
 | `npm run test:coverage --workspace backend/express` | all tests + statement/branch coverage table (HTML in `coverage/index.html`) |
+| `npm run test:cases --workspace backend/express` | runs the suite and regenerates `TEST_CASES.md` (run after adding or renaming tests) |
 
 `tests/whitebox/entitlements.whitebox.test.js` also compares the frontend copy of the flag logic
 (`frontend/src/shared/flags`) with the backend copy; it needs the repo's original folder layout
-and is skipped with a warning otherwise.
+and is skipped with a warning otherwise. Likewise `tests/whitebox/profileHelpers.whitebox.test.js`
+checks the backend avatar preset list against `AVATAR_PRESETS` in
+`frontend/src/shared/components/Avatar.jsx`.
 
 ## Layout
 
 ```
 tests/
   helpers/        setup.js (env, TZ=UTC), fakePrisma.js (in-memory DB), testApp.js (app + tokens)
-  blackbox/       auth / staffDirectory / staffAttendance  — HTTP in, HTTP out, no source knowledge
-  whitebox/       entitlements, middleware, attendanceHelpers, staffHelpers, paths (route handlers),
-                  knownDefects
+  blackbox/       auth / staffDirectory / staffAttendance / profile — HTTP in, HTTP out, no source knowledge
+  whitebox/       entitlements, middleware, attendanceHelpers, staffHelpers, profileHelpers,
+                  paths (route handlers), knownDefects
   TEST_CASES.md   auto-generated register of every test case with its result
+../vitest.config.js        config + coverage scope
+../generateTestCases.js    writes TEST_CASES.md from a JSON run
 ```
 
 ## Black-box techniques used (what to cite in the report)
 
 | Technique | Where |
 |---|---|
-| Equivalence partitioning | login inputs (valid / wrong password / unknown user / missing fields), token classes (missing / malformed / wrong secret / expired / deleted account), status values |
-| Boundary value analysis | late check-in 08:59 / 09:00 / 09:01, early check-out 16:59 / 17:00 / 17:01, stay time 0 / 1 min / negative, month history 1st & last day vs neighbouring months, yearsOfExperience = 0 |
+| Equivalence partitioning | login inputs (valid / wrong password / unknown user / missing fields), token classes (missing / malformed / wrong secret / expired / deleted account), status values, profile field types, avatar formats (preset / PNG / JPEG / WebP vs SVG / GIF / URL / unknown preset) |
+| Boundary value analysis | late check-in 08:59 / 09:00 / 09:01, early check-out 16:59 / 17:00 / 17:01, stay time 0 / 1 min / negative, month history 1st & last day vs neighbouring months, yearsOfExperience = 0, profile field 120 / 121 chars, avatar 500 000 / 500 001 chars, new password 7 / 8 chars |
 | Decision table | flag combinations (directory x attendance) -> 200/403 (`TC-E0x`) |
-| State transition | staff PENDING -> ACTIVE -> archived -> deleted; check-in -> check-out; status correction |
+| State transition | staff PENDING -> ACTIVE -> archived -> deleted; check-in -> check-out; status correction; password change (old password stops working, new one logs in) |
 | CRUD life-cycle | create -> read -> update -> delete for staff |
-| Security / error guessing | SQL-injection input, user enumeration, password-hash leak, tenant isolation (another business gets 404 / empty list), protected fields on PATCH |
+| Security / error guessing | SQL-injection input, user enumeration, password-hash leak, tenant isolation (another business gets 404 / empty list), protected fields on PATCH (staff and profile), SVG avatar rejected, new password stored hashed |
 
 ## White-box techniques used
 
 | Technique | Where |
 |---|---|
-| Statement + branch coverage | `npm run test:coverage` -> 100 % statements, 100 % branches on the 9 files of the 3 modules |
+| Statement + branch coverage | `npm run test:coverage` -> 100 % statements, 100 % branches on the 11 files in scope (3 modules + profile) |
 | Basis-path testing | `resolveModuleAccess` (19 paths, `P01`–`P19`), `PATCH /staff/:id` (`P1`–`P11`) |
 | Condition coverage | `a \|\| b` in the scheduling prerequisite, `flags.resourceDirectory && ids`, `!checkIn \|\| !checkOut` |
-| Internal-state checks | spies verify `$transaction` is used once, `staff.update` is skipped for empty bodies, only whitelisted keys reach the DB, `createMany` skipped for empty schedules |
-| Frontend/backend parity | 2 304 flag/business combinations give identical results in both copies |
+| Internal-state checks | spies verify `$transaction` is used once, `staff.update` is skipped for empty bodies, only whitelisted keys reach the DB, `createMany` skipped for empty schedules, `account.update` is never called on a rejected profile / password request |
+| Frontend/backend parity | 2 304 flag/business combinations give identical results in both copies; avatar preset keys match the frontend list |
 
 ## Known defects found (tests `DEF-01` … `DEF-10`)
 
@@ -82,4 +88,4 @@ they flip to "unexpectedly passed" when someone fixes the code (then delete `.fa
   server endpoint, so it is covered as "request without a token is refused" (`TC-A13`) plus a manual
   UI test-case you can add to the report.
 * Tests pin `TZ=UTC` so date assertions are deterministic; DEF-05 switches to `Asia/Kolkata` on purpose.
-* Not covered (outside these 3 modules): Recruitment, Resource Directory, Scheduling, and all React UI code.
+* Not covered: Recruitment, Resource Directory, Scheduling (FastAPI), and all React UI code.

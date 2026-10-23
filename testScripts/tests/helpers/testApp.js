@@ -17,12 +17,14 @@ vi.mock('../../../backend/express/src/lib/prisma.js', () => ({
 
 export async function buildApp() {
   const { authRouter } = await import('../../../backend/express/src/routes/auth.js')
+  const { profileRouter } = await import('../../../backend/express/src/routes/profile.js')
   const { staffDirectoryRouter } = await import('../../../backend/express/src/routes/staffDirectory.js')
   const { staffAttendanceRouter } = await import('../../../backend/express/src/routes/staffAttendance.js')
 
   const app = express()
-  app.use(express.json())
+  app.use(express.json({ limit: '1mb' })) // same limit as src/index.js (avatar uploads)
   app.use('/auth', authRouter)
+  app.use('/profile', profileRouter)
   app.use('/staff-directory', staffDirectoryRouter)
   app.use('/staff-attendance', staffAttendanceRouter)
   // eslint-disable-next-line no-unused-vars

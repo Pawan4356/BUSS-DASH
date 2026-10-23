@@ -1,5 +1,6 @@
 // Minimal in-memory stand-in for the Prisma client. It implements only the
-// calls the three modules make, so HTTP tests run without PostgreSQL.
+// calls the three modules and the profile page make, so HTTP tests run without
+// PostgreSQL.
 let seq = 0
 const newId = (p) => `${p}_${++seq}`
 
@@ -88,6 +89,11 @@ export function createFakePrisma() {
         if (!include?.business) return a
         const b = db.business.find((x) => x.id === a.businessId)
         return { ...a, business: { ...b, flags: b.flags ?? null } }
+      },
+      update: async ({ where, data }) => {
+        const row = db.account.find((x) => x.id === where.id)
+        Object.assign(row, data)
+        return row
       },
     },
 
@@ -200,8 +206,12 @@ export function seedBusiness(prisma, { id = 'biz1', flags = {}, verificationLeve
   return business
 }
 
-export function seedAccount(prisma, { id, businessId = 'biz1', email, passwordHash, role = 'OWNER' }) {
-  const acc = { id, businessId, email, passwordHash, role }
+export function seedAccount(prisma, { id, businessId = 'biz1', email, passwordHash, role = 'OWNER', ...profile }) {
+  const acc = {
+    id, businessId, email, passwordHash, role, createdAt: new Date('2026-01-01T00:00:00Z'),
+    firstName: null, lastName: null, jobTitle: null, department: null, phone: null, location: null,
+    timezone: null, avatar: null, ...profile,
+  }
   prisma._db.account.push(acc)
   return acc
 }

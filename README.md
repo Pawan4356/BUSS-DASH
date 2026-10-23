@@ -1,173 +1,530 @@
-# BUSS-DASH — Multi-Module Business Dashboard
+# PARSOR — Multi-Module Business Dashboard
 
-A business-account dashboard suite composed of five independently-gated modules:
-Staff Directory, Staff Recruitment, Staff Attendance, Resource Directory, and
-Operational Scheduling. Built from [`dashboard-system-spec-draft-v1.md`](./dashboard-system-spec-draft-v1.md).
+PARSOR (internal codename **BUSS-DASH**) is a dashboard for running a business's people
+and physical resources. A business buys the modules it needs, and each one is unlocked
+independently:
 
-## Tech stack
+| Module | What it does |
+|---|---|
+| **Staff Directory** | Invite and manage staff, weekly working schedules, work responsibilities, a live "who's on the floor today" timeline |
+| **Staff Recruitment** | Recruitment drives (draft → launched → closed), interview rounds, candidate pipeline, hire a candidate straight into the directory |
+| **Staff Attendance** | Daily attendance register (check-in / check-out, late and early flags, status corrections) and per-person monthly history |
+| **Resource Directory** | Workspaces (with sub-spaces) and resources (equipment, vehicles, rooms…), maintenance state, responsible people |
+| **Operational Scheduling** | Assign staff to workspaces/resources in time windows with conflict detection, utilisation summary and trends; the *premium* tier adds an hourly workload chart and per-staff schedules |
 
-| Layer    | Choice                    |
-|----------|---------------------------|
-| Frontend | React + Redux Toolkit (RTK Query) + Vite |
-| Backend  | Node.js/Express (CRUD + auth), Python/FastAPI (scheduling engine) |
-| ORM      | Prisma                    |
-| Database | PostgreSQL                |
+On top of the modules there is sign-in, a per-account **profile page** (name, job title,
+contact details, timezone, avatar, password change) and a light/dark theme.
 
-## Project structure
+---
+
+## Contents
+
+1. [Architecture](#1-architecture)
+2. [Getting started](#2-getting-started)
+3. [Demo accounts](#3-demo-accounts)
+4. [Entitlements: who can see what](#4-entitlements-who-can-see-what)
+5. [Repository layout](#5-repository-layout)
+6. [Backend: Express API](#6-backend-express-api)
+7. [Backend: FastAPI scheduling engine](#7-backend-fastapi-scheduling-engine)
+8. [Database](#8-database)
+9. [Frontend](#9-frontend)
+10. [Branding and theme](#10-branding-and-theme)
+11. [Testing](#11-testing)
+12. [Design decisions](#12-design-decisions)
+13. [Known limitations](#13-known-limitations)
+14. [Troubleshooting](#14-troubleshooting)
+
+---
+
+## 1. Architecture
 
 ```
-/frontend                  React app (shell, modules, shared UI)
-/backend/express            CRUD + auth service
-/backend/fastapi            Scheduling/conflict-check engine
-/prisma                     Shared Prisma schema (single Postgres DB, two services)
-/docs                       Supplementary decisions and notes
+                ┌──────────────────────────────┐
+                │  Frontend (React + Vite)     │  http://localhost:5173
+                │  Redux Toolkit / RTK Query   │
+                └──────────┬───────────┬───────┘
+          JWT (Bearer)     │           │     JWT (Bearer, same token)
+                           ▼           ▼
+   ┌────────────────────────────┐   ┌──────────────────────────────┐
+   │ Express API (Node)         │   │ FastAPI scheduling engine    │
+   │ auth, profile, CRUD for 4  │   │ Operational Scheduling only: │
+   │ modules, entitlement gate  │   │ conflicts, summary, trends   │
+   │ :4000  — Prisma            │   │ :8000  — SQLAlchemy          │
+   └─────────────┬──────────────┘   └──────────────┬───────────────┘
+                 └──────────────┬──────────────────┘
+                                ▼
+                      PostgreSQL (one database)
+                  schema owned by prisma/schema.prisma
 ```
 
-## Decisions on the spec's open items
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, React Router 6, Redux Toolkit + RTK Query, Vite 5 |
+| CRUD / auth API | Node.js 20+, Express 4, Prisma 5, `jsonwebtoken`, `bcryptjs` |
+| Scheduling engine | Python 3.11+, FastAPI, SQLAlchemy 2, `python-jose` |
+| Database | PostgreSQL |
+| Tests | Vitest, Supertest, V8 coverage |
 
-The spec draft left five items open before final handoff (§10). Since this build had
-to proceed without a live back-and-forth, each was resolved with the most defensible
-default and documented in [`docs/decisions.md`](./docs/decisions.md):
+- **One database, two services.** Prisma owns the schema and migrations. FastAPI reads and
+  writes the same tables through SQLAlchemy models (`backend/fastapi/app/models.py`) that
+  mirror the Prisma schema. Change the Prisma schema first, then update those models.
+- **One token.** Express signs a JWT on login using `JWT_SECRET`. FastAPI verifies the
+  same token with the same secret, so the frontend sends one token to both services.
+- **One `.env`** at the repository root is shared by Prisma, Express, FastAPI and Vite.
 
-1. **Text-tag convention** — see `frontend/src/shared/ui-tags`.
-2. **Express vs FastAPI split** — Express owns all CRUD/auth/entitlements; FastAPI
-   owns only the Operational Scheduling conflict-check and utilization aggregation.
-3. **`verification_level`** — modeled as a business account *attribute* (enum), not
-   a purchasable flag.
-4. **Resource Directory summary** — defined as Total Workspaces, Total Resources,
-   Active Resources, Under Maintenance, Awaiting Scheduling.
-5. **Database schema** — drafted in `prisma/schema.prisma`.
+---
 
-## Getting started
+## 2. Getting started
 
-Prerequisites: Node.js 20+, Python 3.11+, a local PostgreSQL instance.
+Prerequisites: **Node.js 20+**, **Python 3.11+**, a local **PostgreSQL** server.
 
 ```bash
-# 1. Install dependencies
+# 1. Install JavaScript dependencies (npm workspaces: frontend + backend/express)
 npm install
-cd backend/fastapi && python3 -m venv .venv && source .venv/bin/activate
+
+# 2. Install Python dependencies for the scheduling engine
+cd backend/fastapi
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cd ../..
 
-# 2. Create a Postgres role + database
+# 3. Create a Postgres role and database
 sudo -u postgres psql -c "CREATE USER bussdash WITH PASSWORD 'bussdash' CREATEDB;"
 sudo -u postgres psql -c "CREATE DATABASE bussdash OWNER bussdash;"
 
-# 3. Configure environment
+# 4. Configure the environment (file lives at the repo root)
 cp .env.example .env
-# edit .env: DATABASE_URL="postgresql://bussdash:bussdash@localhost:5432/bussdash"
+#   DATABASE_URL="postgresql://bussdash:bussdash@localhost:5432/bussdash"
+#   JWT_SECRET="<any long random string>"
 
-# 4. Create the schema and load seed data
+# 5. Create the schema and load demo data
 npm run prisma:migrate
 npm run --workspace backend/express seed
 
-# 5. Run all three services (separate terminals)
-npm run dev:express    # http://localhost:4000
-npm run dev:fastapi    # http://localhost:8000
-npm run dev:frontend   # http://localhost:5173
+# 6. Start the three services (one terminal each)
+npm run dev:express     # http://localhost:4000
+npm run dev:fastapi     # http://localhost:8000  (activate the venv first)
+npm run dev:frontend    # http://localhost:5173
 ```
 
-Open `http://localhost:5173` and sign in with `kavita.raman@meridianhealth.in` /
-`Parsor@2026` (owner of the fully unlocked tenant).
+Open <http://localhost:5173> and sign in with **`kavita.raman@meridianhealth.in`** /
+**`Parsor@2026`**, the owner of the company that has every module unlocked.
 
-The seed script (`backend/express/src/seed.js`, data in `backend/express/src/seed-data/`)
-loads four companies that between them cover every module state and entitlement rule:
-**Meridian Health Clinic** (everything unlocked), **Bluepeak Logistics** (no premium
-scheduling, internal-only hiring), **Saffron Table Café** (recruitment and scheduling
-locked by verification / prerequisites) and **Lumen Design Studio** (nothing purchased).
-It's idempotent and date-relative — re-run it any time for a fresh dataset.
-Every account, role and the use-case each record covers is listed in
-[`docs/seed-data.md`](./docs/seed-data.md), which also documents the account profile
-and avatar feature (`/profile`).
+### Environment variables (`.env`)
 
-See `docs/setup.md` for troubleshooting notes (shadow-database permissions,
-why `.env` lives at the repo root, etc.) and `docs/decisions.md` for the
-reasoning behind every judgment call made while building this.
+| Variable | Used by | Purpose |
+|---|---|---|
+| `DATABASE_URL` | Prisma, Express, FastAPI | Postgres connection string |
+| `JWT_SECRET` | Express, FastAPI | Signs and verifies login tokens; **must be identical** for both |
+| `PORT` | Express | API port (default `4000`) |
+| `FASTAPI_PORT` | FastAPI | Port (default `8000`) |
+| `VITE_EXPRESS_API_URL` | Frontend | Express base URL (default `http://localhost:4000`) |
+| `VITE_FASTAPI_URL` | Frontend | FastAPI base URL (default `http://localhost:8000`) |
 
-
-# Practical 11 — Testing the 3 implemented modules (BUSS-DASH)
-
-Modules under test: **Authentication & Entitlement**, **Staff Directory**, **Staff Attendance**
-Stack under test: the real repo code (Node/Express + Prisma). Tests run with **no database**:
-Prisma is replaced by a small in-memory fake (`helpers/fakePrisma.js`), the Express routers and
-middleware run unmodified.
-
-## Setup (once)
-
-The test suite is stored in `testScripts/` and runs against the existing
-Express backend. From the repository root:
-
-```bash
-npm install
-```
-
-## Run
+### npm scripts
 
 | Command | What it does |
 |---|---|
-| `npm run test --workspace backend/express` | all tests |
-| `npm run test:blackbox --workspace backend/express` | black-box only |
-| `npm run test:whitebox --workspace backend/express` | white-box only |
-| `npm run test:coverage --workspace backend/express` | all tests + statement/branch coverage table (HTML in `coverage/index.html`) |
+| `npm run dev:frontend` | Vite dev server |
+| `npm run dev:express` | Express with `node --watch` (restarts on change) |
+| `npm run dev:fastapi` | `uvicorn app.main:app --reload --port 8000` |
+| `npm run prisma:migrate` | Apply migrations / create a new one from `schema.prisma` |
+| `npm run prisma:generate` | Regenerate the Prisma client |
+| `npm run --workspace backend/express seed` | Reset and reload the demo companies |
+| `npm run build --workspace frontend` | Production build of the frontend into `frontend/dist` |
+| `npm run lint --workspace frontend` | ESLint (React + hooks rules, config in `frontend/.eslintrc.cjs`) |
+| `npm run test --workspace backend/express` | Run the test suite (see [Testing](#11-testing)) |
+| `npm run test:cases --workspace backend/express` | Run the suite and regenerate `testScripts/tests/TEST_CASES.md` |
 
-`tests/whitebox/entitlements.whitebox.test.js` also compares the frontend copy of the flag logic
-(`frontend/src/shared/flags`) with the backend copy; it needs the repo's original folder layout
-and is skipped with a warning otherwise.
+---
 
-## Layout
+## 3. Demo accounts
+
+The seed (`backend/express/src/seed.js`, data in `backend/express/src/seed-data/`, one
+file per company) creates five companies chosen so that, between them, every module
+state and every entitlement rule can be seen in the UI.
+
+**Every seeded account uses the password `Parsor@2026`.**
+
+| Company | Sign in as (owner) | Set-up | What it demonstrates |
+|---|---|---|---|
+| Meridian Health Clinic | `kavita.raman@meridianhealth.in` | ENHANCED, recruitment BOTH | Everything unlocked, including Scheduling Premium |
+| Bluepeak Logistics | `harpreet.gill@bluepeaklogistics.com` | BASIC, recruitment INTERNAL | All modules but no Scheduling Premium; internal hiring only needs BASIC verification |
+| Saffron Table Café | `meenakshi@saffrontable.in` | BASIC, recruitment B2C | Recruitment locked (B2C needs ENHANCED); Scheduling locked (no Resource Directory) |
+| Lumen Design Studio | `tara.malhotra@lumenstudio.co` | BASIC, INTERNAL | Nothing purchased: every module shows its locked state |
+| Lala Company | `pavan.chamar@lalacompany.in` | — | A light-hearted extra tenant with joke profiles and avatars |
+
+Each company also has accounts for its other roles (Staff Manager, Recruitment Manager,
+Attendance Manager, Resource Manager, Operations Manager, Staff).
+
+The seed is **idempotent and date-relative**. Each run deletes the seeded companies (by
+fixed ID, cascading to all child rows) and recreates them with joining dates, attendance
+history, interview dates and assignment windows computed relative to *today*. The data
+therefore always looks current: today's register shows people checked in right now,
+people who have finished, and people whose shift hasn't started. Re-running it wipes UI
+changes made in those companies, but leaves any business you created yourself alone.
+
+Full account list, per-company counts, attendance personas, which record covers which
+use case, and how to add seed data: **[`docs/seed-data.md`](./docs/seed-data.md)**.
+
+---
+
+## 4. Entitlements: who can see what
+
+Each business has a `BusinessFlags` row (what was purchased), a `verificationLevel`
+(`BASIC` / `ENHANCED`) and a `recruitmentModelType` (`INTERNAL` / `B2C` / `BOTH`).
+`resolveModuleAccess(flagKey, { flags, business })` turns these into
+`{ allowed, reason }`:
+
+| Module | Allowed when | Otherwise `reason` |
+|---|---|---|
+| Staff Directory | `staffDirectory` purchased | `not-purchased` |
+| Staff Attendance | `staffAttendance` purchased | `not-purchased` |
+| Resource Directory | `resourceDirectory` purchased | `not-purchased` |
+| Staff Recruitment | `staffRecruitment` purchased **and** verification is ENHANCED for `B2C`/`BOTH`, or BASIC/ENHANCED for `INTERNAL` | `not-purchased`, `requires-enhanced-verification` |
+| Operational Scheduling | `operationalScheduling` purchased **and** Staff Directory **and** Resource Directory purchased | `not-purchased`, `requires-staff-and-resource-directory` |
+| Scheduling Premium | Scheduling allowed **and** `operationalSchedulingPremium` purchased | as above |
+
+The same logic exists in three places, kept in sync on purpose:
+
+| Copy | Role |
+|---|---|
+| `backend/express/src/lib/entitlements.js` | **Authoritative.** The `requireFlag` middleware returns `403 { message, reason }` |
+| `backend/fastapi/app/entitlements.py` | Same rules for the scheduling endpoints |
+| `frontend/src/shared/flags/index.js` | UX only: sidebar lock icons, route guards (`RequireModule`), friendly "why it's locked" screens |
+
+A white-box test checks the frontend and backend copies agree on all 2,304 flag/business
+combinations.
+
+Account **roles** (`OWNER`, `STAFF_MANAGER`, `RECRUITMENT_MANAGER`, `ATTENDANCE_MANAGER`,
+`RESOURCE_MANAGER`, `OPERATIONS_MANAGER`, `STAFF`) are stored and shown, but are **not yet
+enforced** by the API. Access is per business, not per role (see
+[Known limitations](#13-known-limitations)).
+
+---
+
+## 5. Repository layout
 
 ```
-tests/
-  helpers/        setup.js (env, TZ=UTC), fakePrisma.js (in-memory DB), testApp.js (app + tokens)
-  blackbox/       auth / staffDirectory / staffAttendance  — HTTP in, HTTP out, no source knowledge
-  whitebox/       entitlements, middleware, attendanceHelpers, staffHelpers, paths (route handlers),
-                  knownDefects
-  TEST_CASES.md   auto-generated register of every test case with its result
+.
+├── .env.example                 Template for the shared root .env
+├── package.json                 npm workspaces + top-level dev/prisma scripts
+├── prisma/
+│   ├── schema.prisma            Single source of truth for the database
+│   └── migrations/              bussdash (initial), account_profile (profiles + avatars)
+├── backend/
+│   ├── express/src/
+│   │   ├── index.js             App entry: CORS, JSON (1 MB limit), routers, error handler
+│   │   ├── routes/              auth, profile, staffDirectory, staffRecruitment,
+│   │   │                        staffAttendance, resourceDirectory
+│   │   ├── middleware/          auth.js (JWT → req.account), requireFlag.js (entitlements)
+│   │   ├── lib/                 entitlements, per-module helpers, prisma client, loadEnv
+│   │   ├── seed.js              Seed runner
+│   │   └── seed-data/           One file per demo company + shared constants
+│   └── fastapi/app/
+│       ├── main.py              App entry, CORS, /health
+│       ├── routers/scheduling.py  /scheduling/* endpoints
+│       ├── services/scheduling.py Conflict detection, status classification, utilisation
+│       ├── models.py            SQLAlchemy mirror of the Prisma tables
+│       ├── auth.py, entitlements.py, config.py, db.py, schemas.py
+├── frontend/
+│   ├── index.html               Fonts (DM Sans, Young Serif), favicon
+│   ├── public/                  favicon.svg, parsor-logo-kit/ (logo source files)
+│   └── src/
+│       ├── main.jsx, App.jsx    Store, router, route table
+│       ├── app/                 Layout (sidebar), LoginPage, ProfilePage, auth slice,
+│       │                        RequireAuth / RequireModule guards, Redux store
+│       ├── api/                 RTK Query base APIs (Express, FastAPI), auth, profile
+│       ├── modules/             One folder per module: routes.jsx, api.js, pages
+│       └── shared/
+│           ├── components/      Reusable UI (Modal, Tabs, DatePicker, Avatar, ParsorLogo…)
+│           ├── flags/           Frontend copy of entitlement logic + module list
+│           ├── ui-tags/         All display labels / status names in one place
+│           ├── time/            Date/time helpers, useNow() ticking clock
+│           └── styles/theme.css Design tokens, light/dark themes, all component styles
+├── testScripts/                 Test suite (Vitest) for the Express backend + TEST_CASES.md generator
+└── docs/
+    └── seed-data.md             Demo data, accounts, use-case coverage, profile feature
 ```
 
-## Black-box techniques used (what to cite in the report)
+---
 
-| Technique | Where |
+## 6. Backend: Express API
+
+Base URL `http://localhost:4000`. Except for `/health` and `/auth/login`, every route
+requires `Authorization: Bearer <token>`. Module routes also pass `requireFlag(...)`, so
+a business without the module gets `403` with a `reason`. All data is scoped to the
+caller's business: another tenant's IDs return `404`.
+
+| Area | Endpoints |
 |---|---|
-| Equivalence partitioning | login inputs (valid / wrong password / unknown user / missing fields), token classes (missing / malformed / wrong secret / expired / deleted account), status values |
-| Boundary value analysis | late check-in 08:59 / 09:00 / 09:01, early check-out 16:59 / 17:00 / 17:01, stay time 0 / 1 min / negative, month history 1st & last day vs neighbouring months, yearsOfExperience = 0 |
-| Decision table | flag combinations (directory x attendance) -> 200/403 (`TC-E0x`) |
-| State transition | staff PENDING -> ACTIVE -> archived -> deleted; check-in -> check-out; status correction |
-| CRUD life-cycle | create -> read -> update -> delete for staff |
-| Security / error guessing | SQL-injection input, user enumeration, password-hash leak, tenant isolation (another business gets 404 / empty list), protected fields on PATCH |
+| Health | `GET /health` |
+| Auth | `POST /auth/login` → `{ token, account, profile, business, flags }` · `GET /auth/me` (same shape, used to restore a session on reload) |
+| Profile | `GET /profile` · `PATCH /profile` (name, job title, department, phone, location, timezone, avatar) · `POST /profile/password` |
+| Staff Directory | `GET /staff-directory/summary` · `GET, POST /staff-directory/staff` · `GET, PATCH, DELETE /staff-directory/staff/:id` |
+| Staff Recruitment | `GET /staff-recruitment/summary` · `GET, POST /recruitments` · `GET, PATCH /recruitments/:id` · `POST /recruitments/:id/{duplicate,launch,close}` · `GET, POST /recruitments/:id/candidates` · `GET, PATCH /candidates/:id` · `POST /candidates/:id/hire` |
+| Staff Attendance | `GET /staff-attendance/summary` · `GET /staff-attendance/register?date=` · `PATCH /staff-attendance/register/:staffId` · `GET /staff-attendance/staff/:staffId/history` |
+| Resource Directory | `GET /resource-directory/summary` · `GET, POST /workspaces` · `GET, PATCH, DELETE /workspaces/:id` · `GET, POST /resources` · `GET, PATCH, DELETE /resources/:id` |
 
-## White-box techniques used
+(Recruitment and Resource Directory paths are relative to `/staff-recruitment` and
+`/resource-directory`.)
 
-| Technique | Where |
+Notes:
+
+- Passwords are hashed with bcrypt. Tokens are HS256 JWTs carrying `accountId`, valid
+  for 7 days.
+- Avatars are either a preset key (e.g. `person-coral`) or an uploaded image stored as a
+  data URL, which is why the JSON body limit is 1 MB.
+- Attendance: a check-in after the start of the person's scheduled working window is
+  flagged *late*, and a check-out before its end is flagged *early*
+  (`lib/attendanceHelpers.js`). The tests use a 09:00–17:00 schedule.
+- Errors are returned as `{ message }` with the matching HTTP status.
+
+---
+
+## 7. Backend: FastAPI scheduling engine
+
+Base URL `http://localhost:8000`. Interactive docs at <http://localhost:8000/docs>.
+Only the Operational Scheduling module lives here, because it needs the heavier logic:
+overlap detection, status classification over repeat patterns, and utilisation
+aggregation.
+
+| Endpoint | Purpose |
 |---|---|
-| Statement + branch coverage | `npm run test:coverage` -> 100 % statements, 100 % branches on the 9 files of the 3 modules |
-| Basis-path testing | `resolveModuleAccess` (19 paths, `P01`–`P19`), `PATCH /staff/:id` (`P1`–`P11`) |
-| Condition coverage | `a \|\| b` in the scheduling prerequisite, `flags.resourceDirectory && ids`, `!checkIn \|\| !checkOut` |
-| Internal-state checks | spies verify `$transaction` is used once, `staff.update` is skipped for empty bodies, only whitelisted keys reach the DB, `createMany` skipped for empty schedules |
-| Frontend/backend parity | 2 304 flag/business combinations give identical results in both copies |
+| `GET /health` | Liveness check |
+| `GET /scheduling/summary?date=` | Today's counts (active / upcoming / completed assignments, available resources) and a per-workspace utilisation breakdown; **premium** adds an hourly `workload` series |
+| `GET /scheduling/summary/trend` | Utilisation over recent days (sparkline data) |
+| `GET /scheduling/list` | Assignments grouped by workspace and resource; **premium** adds a per-staff schedule view |
+| `POST /scheduling/assignments` | Create an assignment; returns **409 with the conflicts** if the staff member, workspace or resource is already booked in an overlapping window |
+| `DELETE /scheduling/assignments/{id}` | Remove an assignment |
 
-## Known defects found (tests `DEF-01` … `DEF-10`)
+Assignments have a repeat pattern (`NONE` = one-off, `WEEKLY`, `CUSTOM`), a date range
+and one or more time windows. Their status (`UPCOMING` / `ACTIVE` / `COMPLETED` /
+`CANCELLED`) is recomputed from the
+current date and time, and the operational status of workspaces/resources is refreshed
+from it.
 
-These tests assert the **correct** behaviour and are marked `it.fails`, so the suite stays green and
-they flip to "unexpectedly passed" when someone fixes the code (then delete `.fails`).
+---
+
+## 8. Database
+
+`prisma/schema.prisma` is the source of truth. Main models:
+
+| Group | Models |
+|---|---|
+| Tenancy | `Business` (verification level, recruitment model), `BusinessFlags` (purchased modules), `Account` (login, role, profile fields, avatar) |
+| Staff | `Staff` (status `PENDING → ACTIVE`, archived), `WorkingScheduleEntry` (per day-of-week windows), `WorkResponsibility`, `WorkspaceResponsibility`, `ResourceResponsibility` |
+| Recruitment | `Recruitment` (status, audience), `InterviewRound`, `Candidate` (source, status) |
+| Attendance | `AttendanceRecord` (date, check-in/out, late/early flags, status) |
+| Resources | `Workspace`, `SubSpace`, `Resource` (behaviour, scheduling required), `ResourceWorkspace` |
+| Scheduling | `Assignment` (repeat pattern, date range, status), `AssignmentTimeWindow` |
+
+Every business-owned row carries `businessId`, and deleting a business cascades to all
+of its data. Migrations:
+
+- `20260813165745_bussdash`: initial schema.
+- `20261023104052_account_profile`: account profile fields and avatar.
+
+When you change the schema: run `npm run prisma:migrate` (it creates a new migration and
+regenerates the client), update the SQLAlchemy mirror in `backend/fastapi/app/models.py`
+if FastAPI uses the table, and add fields to the seed data / fake test database as needed.
+
+---
+
+## 9. Frontend
+
+- **Routing** (`src/App.jsx`): `/login` is public. Everything else sits inside
+  `RequireAuth` → `Layout` (sidebar + content). Each module is mounted under its own path
+  (`/staff-directory`, `/staff-recruitment`, `/staff-attendance`, `/resource-directory`,
+  `/operational-scheduling`) and wrapped in `RequireModule`, which shows the "locked"
+  reason instead of the page. `/` redirects to Staff Directory, `/profile` is the profile
+  page, and unknown paths show `NotFound`.
+- **State**: `authSlice` holds the token, account, profile, business and flags. The token
+  is persisted in `localStorage`, and on reload `SessionBootstrap` calls `GET /auth/me`
+  to restore the rest. Logout clears it client-side.
+- **Data**: RTK Query, with one base API per backend (`api/baseApi.js` for Express,
+  `api/schedulingBaseApi.js` for FastAPI). Each module has its own `api.js` injecting
+  endpoints, with cache tags for invalidation.
+- **Module structure**: `modules/<module>/routes.jsx` (its route list), `api.js`
+  (endpoints), and page components (list / detail / modals).
+- **Shared UI** (`shared/components`): `Modal`, `ConfirmDialog`, `Tabs`, `KebabMenu`,
+  `SearchInput`, `DatePicker`, `TimeWindowPicker`, `RepeatPatternPicker`, `StatusBadge`,
+  `SummaryStats`, `EmptyState`, `TableSkeleton`, `Toast`, `Avatar`, `PersonCell`,
+  `ScrollArea`, `DetailHeader`, `NotFound`, `ParsorLogo`.
+- **Labels**: every user-visible field name and status label comes from
+  `shared/ui-tags` rather than being hard-coded per module.
+
+---
+
+## 10. Branding and theme
+
+- **Logo**: `ParsorLogo` (`shared/components/ParsorLogo.jsx`) draws the "parsor" wordmark
+  in DM Sans Bold. The "p" has a brass doorway in its counter and the "o" is a clock.
+  `ParsorMark` is the "p" on its own, used for icons. It is drawn in `currentColor`, so it
+  adapts to light and dark backgrounds. The brass accent comes from the `--logo-accent`
+  CSS variable. The original kit (SVGs, CSS, component) lives in
+  `frontend/public/parsor-logo-kit/`, and `frontend/public/favicon.svg` is the app icon.
+- **Sidebar**: always dark. It shows the logo, the signed-in company's name with a small
+  animated brass wave underneath (static when the OS asks for reduced motion), the module
+  list with lock states, and the account / theme / logout controls.
+- **Theme**: `shared/styles/theme.css` defines colour, spacing and type tokens on `:root`.
+  Dark mode follows the OS by default and can be toggled. The choice is stored in
+  `localStorage` and applied as `data-theme` on `<html>`. Fonts: DM Sans (UI) and Young
+  Serif (page titles).
+
+---
+
+## 11. Testing
+
+The test suite lives in **`testScripts/`** and tests the real Express code **without a
+database**. Prisma is swapped for an in-memory fake (`tests/helpers/fakePrisma.js`), while
+the routers and middleware run unmodified. Its scope is **Authentication & Entitlements,
+Staff Directory, Staff Attendance and the Account Profile**: 325 test cases, with 100%
+statement and branch coverage on the 11 files in scope.
+
+| Command (from repo root) | Runs |
+|---|---|
+| `npm run test --workspace backend/express` | All tests |
+| `npm run test:blackbox --workspace backend/express` | Black-box tests only |
+| `npm run test:whitebox --workspace backend/express` | White-box tests only |
+| `npm run test:coverage --workspace backend/express` | All tests + coverage (HTML in `coverage/index.html`) |
+| `npm run test:cases --workspace backend/express` | Runs the suite and regenerates `TEST_CASES.md` |
+
+```
+testScripts/
+├── vitest.config.js        Config; coverage limited to the files in scope
+├── generateTestCases.js    Writes tests/TEST_CASES.md from a JSON test run
+└── tests/
+    ├── helpers/            setup.js (env, TZ=UTC), fakePrisma.js, testApp.js (app + tokens)
+    ├── blackbox/           auth, staffDirectory, staffAttendance, profile: HTTP in, HTTP out
+    ├── whitebox/           entitlements, middleware, attendance/staff/profile helpers,
+    │                       route paths, knownDefects
+    ├── README.md           Techniques used and where (for the testing report)
+    └── TEST_CASES.md       Register of every test case and its result
+```
+
+**Black-box techniques:**
+- **Equivalence partitioning:** login inputs, token classes, profile field types, avatar
+  formats.
+- **Boundary values:**
+  - late check-in at 08:59 / 09:00 / 09:01, early check-out at 16:59 / 17:00 / 17:01;
+  - month edges;
+  - profile field length 120 / 121, avatar size 500,000 / 500,001, password length 7 / 8.
+- **Decision table** for flag combinations.
+- **State transitions:** staff `PENDING → ACTIVE → archived → deleted`, check-in →
+  check-out, password change.
+- **CRUD life cycle** for staff.
+- **Security / error guessing:** SQL injection, user enumeration, password-hash leaks,
+  tenant isolation, protected fields, SVG avatars.
+
+**White-box techniques:**
+- 100% statement and branch coverage.
+- **Basis-path testing:** `resolveModuleAccess` P01–P19, `PATCH /staff/:id` P1–P11, the
+  `/profile` handlers.
+- Condition coverage.
+- **Internal-state checks with spies:** a single `$transaction`, only whitelisted fields
+  written, no write on rejected profile or password requests.
+- **Frontend/backend parity:** entitlement logic and the avatar preset list.
+
+**Known defects (`DEF-01` … `DEF-10`):** these tests assert the *correct* behaviour and
+are marked `it.fails`, so the suite stays green. When a defect is fixed its test starts
+"unexpectedly passing"; remove `.fails` then.
 
 | ID | Module | Defect |
 |---|---|---|
 | DEF-01 | Attendance | Sending only `checkOut` after a late check-in resets `lateCheckIn` to false |
-| DEF-02 | Attendance | Mirror of DEF-01: sending only `checkIn` resets `earlyCheckOut` |
-| DEF-03 | Attendance | Early check-out is judged against the end of the **first** working window only (split shifts wrong) |
-| DEF-04 | Attendance | `?date=garbage` -> 500 instead of 400 |
+| DEF-02 | Attendance | Sending only `checkIn` resets `earlyCheckOut` |
+| DEF-03 | Attendance | Early check-out is judged against the first working window only (split shifts are wrong) |
+| DEF-04 | Attendance | `?date=garbage` returns 500 instead of 400 |
 | DEF-05 | Attendance | On a non-UTC server (e.g. IST) `/register` reports the previous calendar date |
-| DEF-06 | Attendance | Unknown `status` value is not validated (no 400) |
-| DEF-07 | Directory | Spec §5 "Holder role: Staff Manager" not enforced — role `STAFF` can delete staff |
-| DEF-08 | Attendance | Spec §7 "Holder role: Attendance Manager" not enforced |
-| DEF-09 | Directory | Work-responsibility checklist is not gated by purchased flags (spec §5) |
-| DEF-10 | Directory | Same `accountId` can be invited twice in one business |
+| DEF-06 | Attendance | An unknown `status` value is not rejected with 400 |
+| DEF-07 | Directory | Role `STAFF` can delete staff (Staff Manager role not enforced) |
+| DEF-08 | Attendance | Attendance Manager role not enforced |
+| DEF-09 | Directory | Work-responsibility checklist is not gated by purchased flags |
+| DEF-10 | Directory | The same `accountId` can be invited twice in one business |
 
-## Things to know
+Not covered by automated tests: Recruitment, Resource Directory, Scheduling (FastAPI) and
+the React UI. When you change the code in scope, add or adjust tests, then run
+`test:coverage` (should stay at 100%) and `test:cases`.
 
-* **Logout** is client-side only (`frontend/src/app/authSlice.js` -> `loggedOut`). There is no
-  server endpoint, so it is covered as "request without a token is refused" (`TC-A13`) plus a manual
-  UI test-case you can add to the report.
-* Tests pin `TZ=UTC` so date assertions are deterministic; DEF-05 switches to `Asia/Kolkata` on purpose.
-* Not covered (outside these 3 modules): Recruitment, Resource Directory, Scheduling, and all React UI code.
+---
+
+## 12. Design decisions
+
+The original specification left several things open. Each was closed with a
+defensible default, and code comments refer to these by number
+(e.g. "README.md › Design decisions #2").
+
+1. **Label convention.** The spec spelled labels inconsistently between modules
+   ("Business Status" / `business_status` / `businss_status`). All display labels live in
+   `frontend/src/shared/ui-tags` as `SCREAMING_SNAKE` constants holding Title Case text,
+   and every module imports them from there.
+2. **Express vs FastAPI split.** Express owns everything CRUD/auth: four modules, the
+   profile and the entitlement middleware. FastAPI owns only the Operational Scheduling
+   compute path (conflict checks on create, status recomputation, utilisation/workload
+   aggregation). It reads and writes the same Postgres tables through SQLAlchemy, and no
+   table is FastAPI-only.
+3. **`verificationLevel`** is an attribute of the business (`BASIC` | `ENHANCED`), not a
+   purchasable flag, so it isn't in `BusinessFlags`. Recruitment gating reads it from the
+   business record.
+4. **Resource Directory summary** shows Total Workspaces, Total Resources, Active
+   Resources, Under Maintenance and Awaiting Scheduling. "Awaiting Scheduling" means
+   `schedulingRequired = true` with no current assignment.
+5. **Database modelling.**
+   - Fields the spec marks "+ custom" (employment type, category…) are plain `String`
+     columns: the UI offers presets from `ui-tags` plus free text.
+   - Truly closed sets (statuses, repeat pattern, day of week…) are Prisma enums.
+   - Staff ↔ workspace/resource responsibility are join tables.
+   - Weekly *availability* (`WorkingScheduleEntry`) and booked *time blocks*
+     (`AssignmentTimeWindow`) are separate tables even though they share a picker UI.
+6. **"Offers Sent"** (Recruitment summary). The candidate statuses are Applied /
+   Shortlisted / Rejected / Hired, with no "Offered" state, so Offers Sent is approximated
+   as the number of Shortlisted candidates.
+7. **Utilisation maths** (Scheduling). The spec defines no business hours. Each day is
+   therefore a 24-hour capacity window, staff overtime is time beyond an 8-hour day, and a
+   resource in `MAINTENANCE` counts the whole day as maintenance hours. What's left is
+   downtime.
+8. **Total / Available counts** (Scheduling "today" panel). Total = active entities of
+   that type. Available = Total minus those with an `ACTIVE` assignment right now, i.e.
+   free capacity.
+9. **Entitlement logic is duplicated on purpose.** The backend is authoritative, and the
+   frontend copy only avoids a round-trip before hiding or redirecting. A parity test
+   guards against drift.
+10. **A single root `.env`.** Vite (`envDir: '../'`), Express (`lib/loadEnv.js`) and
+    FastAPI all read the same file, so ports, URLs and `JWT_SECRET` can't drift apart.
+11. **Avatars** are stored on the account as `preset:<key>` (built-in illustrations) or a
+    `data:image/png|jpeg|webp` URL. The client resizes uploads to 256×256 and the server
+    caps them at 500,000 characters. SVG is rejected because it can carry script. The
+    preset list exists in both `lib/profileHelpers.js` and `shared/components/Avatar.jsx`,
+    and a test keeps the two identical.
+
+The original spec (`dashboard-system-spec-draft-v1.md`) and the earlier `docs/decisions.md`
+/ `docs/setup.md` were removed in commit `d882396`. Their content is folded into this
+README, and the originals are still in git history.
+
+---
+
+## 13. Known limitations
+
+- Roles are not enforced by the API (DEF-07, DEF-08). Any account in a business can
+  perform any action in a module the business has purchased.
+- Logout is client-side only. Tokens stay valid until they expire (7 days).
+- Avatars are stored inline in the database as data URLs. That's fine for a demo, but
+  object storage would be better in production.
+- There is no self-service signup or module purchasing. Businesses and flags come from the
+  seed or direct database edits.
+- See the defect table in [Testing](#11-testing) for attendance edge cases.
+
+---
+
+## 14. Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `prisma migrate dev` fails with `P3014` (can't create shadow database) | The DB user needs `CREATEDB` (step 3 grants it). Prisma creates a throwaway shadow DB to diff migrations |
+| Express errors about unknown fields after a schema change | Run `npm run prisma:generate`, then restart Express |
+| Express or Vite can't see variables from `.env` | The file must be at the **repo root**, not inside `frontend/` or `backend/express/` |
+| FastAPI returns 401 for a token that works on Express | `JWT_SECRET` differs between the processes. Restart both after editing `.env` |
+| Scheduling pages fail to load | FastAPI isn't running, or `VITE_FASTAPI_URL` points to the wrong port |
+| A module shows as locked | Expected for that company. Check the `reason` against [Entitlements](#4-entitlements-who-can-see-what), or sign in as Meridian Health |
+| Demo data looks stale or was edited | Re-run `npm run --workspace backend/express seed` |

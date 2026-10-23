@@ -1,6 +1,7 @@
 /**
  * KNOWN DEFECTS found by reading the source (white-box) and comparing it with
- * dashboard-system-spec-draft-v1.md.
+ * the original dashboard specification (dashboard-system-spec-draft-v1.md, no longer
+ * in the repository; it is in git history before commit d882396).
  *
  * Each test asserts the CORRECT / SPEC-CONFORMING behaviour and is wrapped in
  * `it(...)`: the suite stays green while the defect exists, and the moment

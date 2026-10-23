@@ -1,8 +1,10 @@
 # Test case register (auto-generated from the last run)
 
+Regenerate with `npm run test:cases --workspace backend/express`.
+
 Result column: PASS = behaviour matches expectation. XFAIL = known defect, test asserts the correct behaviour and is expected to fail until the code is fixed.
 
-Total test cases: **249**
+Total test cases: **325**
 
 
 ## Black-box tests
@@ -24,23 +26,73 @@ Total test cases: **249**
 | 10 | BB-AUTH  POST /auth/login TC-A06 password is case-sensitive | PASS |
 | 11 | BB-AUTH  POST /auth/login TC-A07 SQL-injection style input is treated as plain data -> 401 | PASS |
 | 12 | BB-AUTH  POST /auth/login TC-A08 token issued at login is accepted by a protected endpoint | PASS |
-| 13 | BB-AUTH  GET /auth/me  (session / token validation) TC-A09 valid token -> 200 with account, business and flags | PASS |
-| 14 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 no Authorization header -> 401 | PASS |
-| 15 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 wrong scheme (Basic) -> 401 | PASS |
-| 16 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 Bearer with no token -> 401 | PASS |
-| 17 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 garbage token -> 401 | PASS |
-| 18 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 token signed with another secret -> 401 | PASS |
-| 19 | BB-AUTH  GET /auth/me  (session / token validation) TC-A11 expired token -> 401 "Invalid or expired token" | PASS |
-| 20 | BB-AUTH  GET /auth/me  (session / token validation) TC-A12 valid token for an account that no longer exists -> 401 | PASS |
-| 21 | BB-AUTH  GET /auth/me  (session / token validation) TC-A13 "logout" = client discards token; without a token access is refused | PASS |
-| 22 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=true attendance=true -> dir 200 / attendance 200 | PASS |
-| 23 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=true attendance=false -> dir 200 / attendance 403 | PASS |
-| 24 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=false attendance=true -> dir 403 / attendance 200 | PASS |
-| 25 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=false attendance=false -> dir 403 / attendance 403 | PASS |
-| 26 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E05 blocked module returns reason "not-purchased" and a readable message | PASS |
-| 27 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E06 business with no flags row at all -> 403 | PASS |
-| 28 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E07 unauthenticated request to a gated module -> 401 (auth is checked before entitlement) | PASS |
-| 29 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E08 enabling a flag takes effect on the next request (no re-login needed) | PASS |
+| 13 | BB-AUTH  POST /auth/login TC-A14 login response includes the account profile (all null until filled in) | PASS |
+| 14 | BB-AUTH  GET /auth/me  (session / token validation) TC-A09 valid token -> 200 with account, business and flags | PASS |
+| 15 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 no Authorization header -> 401 | PASS |
+| 16 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 wrong scheme (Basic) -> 401 | PASS |
+| 17 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 Bearer with no token -> 401 | PASS |
+| 18 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 garbage token -> 401 | PASS |
+| 19 | BB-AUTH  GET /auth/me  (session / token validation) TC-A10 token signed with another secret -> 401 | PASS |
+| 20 | BB-AUTH  GET /auth/me  (session / token validation) TC-A11 expired token -> 401 "Invalid or expired token" | PASS |
+| 21 | BB-AUTH  GET /auth/me  (session / token validation) TC-A12 valid token for an account that no longer exists -> 401 | PASS |
+| 22 | BB-AUTH  GET /auth/me  (session / token validation) TC-A13 "logout" = client discards token; without a token access is refused | PASS |
+| 23 | BB-AUTH  GET /auth/me  (session / token validation) TC-A15 /auth/me returns the same profile as login (used to restore the session on reload) | PASS |
+| 24 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=true attendance=true -> dir 200 / attendance 200 | PASS |
+| 25 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=true attendance=false -> dir 200 / attendance 403 | PASS |
+| 26 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=false attendance=true -> dir 403 / attendance 200 | PASS |
+| 27 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E0x directory=false attendance=false -> dir 403 / attendance 403 | PASS |
+| 28 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E05 blocked module returns reason "not-purchased" and a readable message | PASS |
+| 29 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E06 business with no flags row at all -> 403 | PASS |
+| 30 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E07 unauthenticated request to a gated module -> 401 (auth is checked before entitlement) | PASS |
+| 31 | BB-ENTITLEMENT  Decision table (flag combination -> HTTP access) TC-E08 enabling a flag takes effect on the next request (no re-login needed) | PASS |
+
+### `tests/blackbox/profile.blackbox.test.js`
+
+| # | Test case | Result |
+|---|---|---|
+| 1 | BB-PROFILE  View  GET /profile TC-P01 empty profile -> 200, every field null, memberSince from createdAt | PASS |
+| 2 | BB-PROFILE  View  GET /profile TC-P02 displayName joins first + last name | PASS |
+| 3 | BB-PROFILE  View  GET /profile TC-P03 never exposes passwordHash, email, role or businessId | PASS |
+| 4 | BB-PROFILE  View  GET /profile TC-P04 without a token -> 401 on every profile route | PASS |
+| 5 | BB-PROFILE  View  GET /profile TC-P05 profile is not module-gated: a business with every flag off can still use it | PASS |
+| 6 | BB-PROFILE  Update  PATCH /profile TC-P06 update every text field -> 200 and persisted | PASS |
+| 7 | BB-PROFILE  Update  PATCH /profile TC-P07 partial update leaves other fields untouched | PASS |
+| 8 | BB-PROFILE  Update  PATCH /profile TC-P08 values are trimmed; empty / whitespace-only strings clear the field | PASS |
+| 9 | BB-PROFILE  Update  PATCH /profile TC-P09 explicit null clears a field | PASS |
+| 10 | BB-PROFILE  Update  PATCH /profile TC-P10 BVA jobTitle of 120 characters (upper boundary) -> 200 | PASS |
+| 11 | BB-PROFILE  Update  PATCH /profile TC-P10 BVA jobTitle of 121 characters (just over) -> 400 | PASS |
+| 12 | BB-PROFILE  Update  PATCH /profile TC-P11 non-string value (number) -> 400 and nothing saved | PASS |
+| 13 | BB-PROFILE  Update  PATCH /profile TC-P11 non-string value (boolean) -> 400 and nothing saved | PASS |
+| 14 | BB-PROFILE  Update  PATCH /profile TC-P11 non-string value (object) -> 400 and nothing saved | PASS |
+| 15 | BB-PROFILE  Update  PATCH /profile TC-P11 non-string value (array) -> 400 and nothing saved | PASS |
+| 16 | BB-PROFILE  Update  PATCH /profile TC-P12 protected / unknown fields are ignored (email, role, passwordHash, businessId) | PASS |
+| 17 | BB-PROFILE  Update  PATCH /profile TC-P13 empty body is a no-op -> 200 | PASS |
+| 18 | BB-PROFILE  Update  PATCH /profile TC-P14 an account only ever edits its own profile | PASS |
+| 19 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P15 valid avatar: built-in person preset -> 200 | PASS |
+| 20 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P15 valid avatar: built-in fun preset -> 200 | PASS |
+| 21 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P15 valid avatar: uploaded PNG data URL -> 200 | PASS |
+| 22 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P15 valid avatar: uploaded JPEG data URL -> 200 | PASS |
+| 23 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P15 valid avatar: uploaded WebP data URL -> 200 | PASS |
+| 24 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P15 valid avatar: null (back to initials) -> 200 | PASS |
+| 25 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: unknown preset key -> 400 | PASS |
+| 26 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: preset key without the prefix -> 400 | PASS |
+| 27 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: SVG data URL (script vector) -> 400 | PASS |
+| 28 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: GIF data URL -> 400 | PASS |
+| 29 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: remote URL -> 400 | PASS |
+| 30 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: data URL with non-base64 characters -> 400 | PASS |
+| 31 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P16 invalid avatar: number -> 400 | PASS |
+| 32 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P17 BVA avatar size: 500 000 characters accepted, 500 001 rejected | PASS |
+| 33 | BB-PROFILE  Avatar  PATCH /profile { avatar } TC-P18 avatar change is reflected in the login response | PASS |
+| 34 | BB-PROFILE  Change password  POST /profile/password TC-P19 correct current password -> 204; new password works, old one does not | PASS |
+| 35 | BB-PROFILE  Change password  POST /profile/password TC-P20 new password is stored hashed, never in plain text | PASS |
+| 36 | BB-PROFILE  Change password  POST /profile/password TC-P21 wrong current password -> 400 and password unchanged | PASS |
+| 37 | BB-PROFILE  Change password  POST /profile/password TC-P22 empty body -> 400 "required" | PASS |
+| 38 | BB-PROFILE  Change password  POST /profile/password TC-P22 missing currentPassword -> 400 "required" | PASS |
+| 39 | BB-PROFILE  Change password  POST /profile/password TC-P22 missing newPassword -> 400 "required" | PASS |
+| 40 | BB-PROFILE  Change password  POST /profile/password TC-P22 empty-string newPassword -> 400 "required" | PASS |
+| 41 | BB-PROFILE  Change password  POST /profile/password TC-P23 BVA new password of 7 characters (just under) -> 400 | PASS |
+| 42 | BB-PROFILE  Change password  POST /profile/password TC-P23 BVA new password of 8 characters (boundary) -> 204 | PASS |
+| 43 | BB-PROFILE  Change password  POST /profile/password TC-P24 non-string newPassword (number) -> 400 | PASS |
 
 ### `tests/blackbox/staffAttendance.blackbox.test.js`
 
@@ -53,50 +105,52 @@ Total test cases: **249**
 | 5 | BB-ATT  Register  GET /register TC-T05 filter by status | PASS |
 | 6 | BB-ATT  Register  GET /register TC-T06 archived staff are not listed | PASS |
 | 7 | BB-ATT  Register  GET /register TC-T07 other businesses' staff are never listed | PASS |
-| 8 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T08 check-in creates a record, default status PRESENT, stay time not yet known | PASS |
-| 9 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T09 check-out after check-in calculates stay time (Practical-10 example: 09:15 -> 18:05 = 8.83 h) | PASS |
-| 10 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T10 check-in and check-out in one request | PASS |
-| 11 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T11 marking the same staff+date twice updates ONE record (no duplicates) | PASS |
-| 12 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T12 BVA stay time: check-out == check-in -> 0 minutes | PASS |
-| 13 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T13 BVA stay time: 1 minute | PASS |
-| 14 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T14 check-out BEFORE check-in never produces a negative stay time | PASS |
-| 15 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T15 stay time is rounded to whole minutes | PASS |
-| 16 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T16 unknown staff -> 404 | PASS |
-| 17 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T17 staff of another business -> 404 | PASS |
-| 18 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T18 records for different dates are independent | PASS |
-| 19 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status PRESENT | PASS |
-| 20 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status ABSENT | PASS |
-| 21 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status LEAVE | PASS |
-| 22 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status OFF | PASS |
-| 23 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T20 status can be corrected afterwards | PASS |
-| 24 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T21 an explicit status is kept when times are added later | PASS |
-| 25 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 08:59 -> lateCheckIn=false | PASS |
-| 26 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:00 -> lateCheckIn=false | PASS |
-| 27 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:01 -> lateCheckIn=true | PASS |
-| 28 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:15 -> lateCheckIn=true | PASS |
-| 29 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 16:59 -> earlyCheckOut=true | PASS |
-| 30 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:00 -> earlyCheckOut=false | PASS |
-| 31 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:01 -> earlyCheckOut=false | PASS |
-| 32 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 12:00 -> earlyCheckOut=true | PASS |
-| 33 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T24 staff with NO schedule for that day is never late / early | PASS |
-| 34 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T25 a day marked OFF has no working window -> not late / early | PASS |
-| 35 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T26 late AND early in the same request | PASS |
-| 36 | BB-ATT  Today's summary  GET /summary TC-T27 staff with no record today count as ABSENT | PASS |
-| 37 | BB-ATT  Today's summary  GET /summary TC-T28 counts every status and late / early totals | PASS |
-| 38 | BB-ATT  Today's summary  GET /summary TC-T29 archived staff are excluded from the summary | PASS |
-| 39 | BB-ATT  Today's summary  GET /summary TC-T30 summary is scoped to the caller's business | PASS |
-| 40 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T31 returns the month's records in ascending date order with stay time | PASS |
-| 41 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T32 BVA month edges: 1st and last day included, previous / next month excluded | PASS |
-| 42 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T33 month with no records -> empty array | PASS |
-| 43 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T34 no month given -> defaults to the current month (200) | PASS |
-| 44 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T35 unknown staff -> 404 | PASS |
-| 45 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T36 history of another business's staff -> 404 | PASS |
-| 46 | BB-ATT  Access control TC-T37 get /summary without token -> 401 | PASS |
-| 47 | BB-ATT  Access control TC-T37 get /register without token -> 401 | PASS |
-| 48 | BB-ATT  Access control TC-T37 patch /register/x without token -> 401 | PASS |
-| 49 | BB-ATT  Access control TC-T37 get /staff/x/history without token -> 401 | PASS |
-| 50 | BB-ATT  Access control TC-T38 Staff Attendance not purchased -> 403 with reason | PASS |
-| 51 | BB-ATT  Access control TC-T39 buying ONLY Staff Directory does not unlock attendance | PASS |
+| 8 | BB-ATT  Register  GET /register TC-T40 register row shows job title and the late / early flags of the stored record | PASS |
+| 9 | BB-ATT  Register  GET /register TC-T41 staff without a job title -> title null (not undefined / missing) | PASS |
+| 10 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T08 check-in creates a record, default status PRESENT, stay time not yet known | PASS |
+| 11 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T09 check-out after check-in calculates stay time (Practical-10 example: 09:15 -> 18:05 = 8.83 h) | PASS |
+| 12 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T10 check-in and check-out in one request | PASS |
+| 13 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T11 marking the same staff+date twice updates ONE record (no duplicates) | PASS |
+| 14 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T12 BVA stay time: check-out == check-in -> 0 minutes | PASS |
+| 15 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T13 BVA stay time: 1 minute | PASS |
+| 16 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T14 check-out BEFORE check-in never produces a negative stay time | PASS |
+| 17 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T15 stay time is rounded to whole minutes | PASS |
+| 18 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T16 unknown staff -> 404 | PASS |
+| 19 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T17 staff of another business -> 404 | PASS |
+| 20 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T18 records for different dates are independent | PASS |
+| 21 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status PRESENT | PASS |
+| 22 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status ABSENT | PASS |
+| 23 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status LEAVE | PASS |
+| 24 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status OFF | PASS |
+| 25 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T20 status can be corrected afterwards | PASS |
+| 26 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T21 an explicit status is kept when times are added later | PASS |
+| 27 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 08:59 -> lateCheckIn=false | PASS |
+| 28 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:00 -> lateCheckIn=false | PASS |
+| 29 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:01 -> lateCheckIn=true | PASS |
+| 30 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:15 -> lateCheckIn=true | PASS |
+| 31 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 16:59 -> earlyCheckOut=true | PASS |
+| 32 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:00 -> earlyCheckOut=false | PASS |
+| 33 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:01 -> earlyCheckOut=false | PASS |
+| 34 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 12:00 -> earlyCheckOut=true | PASS |
+| 35 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T24 staff with NO schedule for that day is never late / early | PASS |
+| 36 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T25 a day marked OFF has no working window -> not late / early | PASS |
+| 37 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T26 late AND early in the same request | PASS |
+| 38 | BB-ATT  Today's summary  GET /summary TC-T27 staff with no record today count as ABSENT | PASS |
+| 39 | BB-ATT  Today's summary  GET /summary TC-T28 counts every status and late / early totals | PASS |
+| 40 | BB-ATT  Today's summary  GET /summary TC-T29 archived staff are excluded from the summary | PASS |
+| 41 | BB-ATT  Today's summary  GET /summary TC-T30 summary is scoped to the caller's business | PASS |
+| 42 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T31 returns the month's records in ascending date order with stay time | PASS |
+| 43 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T32 BVA month edges: 1st and last day included, previous / next month excluded | PASS |
+| 44 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T33 month with no records -> empty array | PASS |
+| 45 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T34 no month given -> defaults to the current month (200) | PASS |
+| 46 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T35 unknown staff -> 404 | PASS |
+| 47 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T36 history of another business's staff -> 404 | PASS |
+| 48 | BB-ATT  Access control TC-T37 get /summary without token -> 401 | PASS |
+| 49 | BB-ATT  Access control TC-T37 get /register without token -> 401 | PASS |
+| 50 | BB-ATT  Access control TC-T37 patch /register/x without token -> 401 | PASS |
+| 51 | BB-ATT  Access control TC-T37 get /staff/x/history without token -> 401 | PASS |
+| 52 | BB-ATT  Access control TC-T38 Staff Attendance not purchased -> 403 with reason | PASS |
+| 53 | BB-ATT  Access control TC-T39 buying ONLY Staff Directory does not unlock attendance | PASS |
 
 ### `tests/blackbox/staffDirectory.blackbox.test.js`
 
@@ -119,41 +173,42 @@ Total test cases: **249**
 | 15 | BB-STAFF  List / search / filter  GET /staff TC-S06 filter responsibility | PASS |
 | 16 | BB-STAFF  List / search / filter  GET /staff TC-S06 archived=true shows only archived | PASS |
 | 17 | BB-STAFF  List / search / filter  GET /staff TC-S06 combined filters (AND) | PASS |
-| 18 | BB-STAFF  List / search / filter  GET /staff TC-S07 staff of another business are never returned (tenant isolation) | PASS |
-| 19 | BB-STAFF  View profile  GET /staff/:id TC-S08 existing id -> 200 full detail incl. schedule + responsibility defaults | PASS |
-| 20 | BB-STAFF  View profile  GET /staff/:id TC-S09 unknown id -> 404 | PASS |
-| 21 | BB-STAFF  View profile  GET /staff/:id TC-S10 staff that belongs to another business -> 404 (not 403, no existence leak) | PASS |
-| 22 | BB-STAFF  Update profile  PATCH /staff/:id TC-S11 update general + professional details (PENDING -> ACTIVE) | PASS |
-| 23 | BB-STAFF  Update profile  PATCH /staff/:id TC-S12 dates are accepted as ISO strings | PASS |
-| 24 | BB-STAFF  Update profile  PATCH /staff/:id TC-S13 BVA yearsOfExperience = 0 is stored (falsy but valid) | PASS |
-| 25 | BB-STAFF  Update profile  PATCH /staff/:id TC-S14 partial update leaves other fields untouched | PASS |
-| 26 | BB-STAFF  Update profile  PATCH /staff/:id TC-S15 empty body is a no-op -> 200, unchanged | PASS |
-| 27 | BB-STAFF  Update profile  PATCH /staff/:id TC-S16 protected fields (id, businessId, accountId) cannot be changed | PASS |
-| 28 | BB-STAFF  Update profile  PATCH /staff/:id TC-S17 unknown id -> 404 | PASS |
-| 29 | BB-STAFF  Update profile  PATCH /staff/:id TC-S18 cannot update staff of another business -> 404 | PASS |
-| 30 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S19 set Mon-Fri 09:00-17:00 and a day off on Sat | PASS |
-| 31 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S20 a day may have several windows (split shift) | PASS |
-| 32 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S21 saving a new schedule REPLACES the old one | PASS |
-| 33 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S22 empty schedule array clears the schedule | PASS |
-| 34 | BB-STAFF  Assign responsibility TC-S23 work-responsibility checklist is saved and counted | PASS |
-| 35 | BB-STAFF  Assign responsibility TC-S24 updating the checklist again changes the existing row (upsert) | PASS |
-| 36 | BB-STAFF  Assign responsibility TC-S25 workspace/resource responsibilities are IGNORED when Resource Directory is not purchased | PASS |
-| 37 | BB-STAFF  Assign responsibility TC-S26 workspace/resource responsibilities are saved when Resource Directory IS purchased | PASS |
-| 38 | BB-STAFF  Assign responsibility TC-S27 empty id arrays clear previously assigned responsibilities | PASS |
-| 39 | BB-STAFF  Archive, delete and summary TC-S28 archive hides a member from the default list; unarchive restores | PASS |
-| 40 | BB-STAFF  Archive, delete and summary TC-S29 delete -> 204, then GET -> 404 | PASS |
-| 41 | BB-STAFF  Archive, delete and summary TC-S30 delete unknown id -> 404; delete twice -> 404 the second time | PASS |
-| 42 | BB-STAFF  Archive, delete and summary TC-S31 cannot delete staff of another business -> 404 and record survives | PASS |
-| 43 | BB-STAFF  Archive, delete and summary TC-S32 summary: totalStaff excludes archived, pendingInvitations counts PENDING | PASS |
-| 44 | BB-STAFF  Archive, delete and summary TC-S33 summary of an empty business is zeros | PASS |
-| 45 | BB-STAFF  Access control TC-S34 get /summary without token -> 401 | PASS |
-| 46 | BB-STAFF  Access control TC-S34 get /staff without token -> 401 | PASS |
-| 47 | BB-STAFF  Access control TC-S34 post /staff without token -> 401 | PASS |
-| 48 | BB-STAFF  Access control TC-S34 get /staff/x without token -> 401 | PASS |
-| 49 | BB-STAFF  Access control TC-S34 patch /staff/x without token -> 401 | PASS |
-| 50 | BB-STAFF  Access control TC-S34 delete /staff/x without token -> 401 | PASS |
-| 51 | BB-STAFF  Access control TC-S35 business without the Staff Directory flag -> 403 on every route | PASS |
-| 52 | BB-STAFF  Access control TC-S36 second tenant with the flag enabled sees an empty directory (no cross-over) | PASS |
+| 18 | BB-STAFF  List / search / filter  GET /staff TC-S37 list item carries a compact weekSchedule and named responsibilities (for list chips) | PASS |
+| 19 | BB-STAFF  List / search / filter  GET /staff TC-S07 staff of another business are never returned (tenant isolation) | PASS |
+| 20 | BB-STAFF  View profile  GET /staff/:id TC-S08 existing id -> 200 full detail incl. schedule + responsibility defaults | PASS |
+| 21 | BB-STAFF  View profile  GET /staff/:id TC-S09 unknown id -> 404 | PASS |
+| 22 | BB-STAFF  View profile  GET /staff/:id TC-S10 staff that belongs to another business -> 404 (not 403, no existence leak) | PASS |
+| 23 | BB-STAFF  Update profile  PATCH /staff/:id TC-S11 update general + professional details (PENDING -> ACTIVE) | PASS |
+| 24 | BB-STAFF  Update profile  PATCH /staff/:id TC-S12 dates are accepted as ISO strings | PASS |
+| 25 | BB-STAFF  Update profile  PATCH /staff/:id TC-S13 BVA yearsOfExperience = 0 is stored (falsy but valid) | PASS |
+| 26 | BB-STAFF  Update profile  PATCH /staff/:id TC-S14 partial update leaves other fields untouched | PASS |
+| 27 | BB-STAFF  Update profile  PATCH /staff/:id TC-S15 empty body is a no-op -> 200, unchanged | PASS |
+| 28 | BB-STAFF  Update profile  PATCH /staff/:id TC-S16 protected fields (id, businessId, accountId) cannot be changed | PASS |
+| 29 | BB-STAFF  Update profile  PATCH /staff/:id TC-S17 unknown id -> 404 | PASS |
+| 30 | BB-STAFF  Update profile  PATCH /staff/:id TC-S18 cannot update staff of another business -> 404 | PASS |
+| 31 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S19 set Mon-Fri 09:00-17:00 and a day off on Sat | PASS |
+| 32 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S20 a day may have several windows (split shift) | PASS |
+| 33 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S21 saving a new schedule REPLACES the old one | PASS |
+| 34 | BB-STAFF  Working schedule  (PATCH workingSchedule) TC-S22 empty schedule array clears the schedule | PASS |
+| 35 | BB-STAFF  Assign responsibility TC-S23 work-responsibility checklist is saved and counted | PASS |
+| 36 | BB-STAFF  Assign responsibility TC-S24 updating the checklist again changes the existing row (upsert) | PASS |
+| 37 | BB-STAFF  Assign responsibility TC-S25 workspace/resource responsibilities are IGNORED when Resource Directory is not purchased | PASS |
+| 38 | BB-STAFF  Assign responsibility TC-S26 workspace/resource responsibilities are saved when Resource Directory IS purchased | PASS |
+| 39 | BB-STAFF  Assign responsibility TC-S27 empty id arrays clear previously assigned responsibilities | PASS |
+| 40 | BB-STAFF  Archive, delete and summary TC-S28 archive hides a member from the default list; unarchive restores | PASS |
+| 41 | BB-STAFF  Archive, delete and summary TC-S29 delete -> 204, then GET -> 404 | PASS |
+| 42 | BB-STAFF  Archive, delete and summary TC-S30 delete unknown id -> 404; delete twice -> 404 the second time | PASS |
+| 43 | BB-STAFF  Archive, delete and summary TC-S31 cannot delete staff of another business -> 404 and record survives | PASS |
+| 44 | BB-STAFF  Archive, delete and summary TC-S32 summary: totalStaff excludes archived, pendingInvitations counts PENDING | PASS |
+| 45 | BB-STAFF  Archive, delete and summary TC-S33 summary of an empty business is zeros | PASS |
+| 46 | BB-STAFF  Access control TC-S34 get /summary without token -> 401 | PASS |
+| 47 | BB-STAFF  Access control TC-S34 get /staff without token -> 401 | PASS |
+| 48 | BB-STAFF  Access control TC-S34 post /staff without token -> 401 | PASS |
+| 49 | BB-STAFF  Access control TC-S34 get /staff/x without token -> 401 | PASS |
+| 50 | BB-STAFF  Access control TC-S34 patch /staff/x without token -> 401 | PASS |
+| 51 | BB-STAFF  Access control TC-S34 delete /staff/x without token -> 401 | PASS |
+| 52 | BB-STAFF  Access control TC-S35 business without the Staff Directory flag -> 403 on every route | PASS |
+| 53 | BB-STAFF  Access control TC-S36 second tenant with the flag enabled sees an empty directory (no cross-over) | PASS |
 
 ## White-box tests
 
@@ -285,6 +340,34 @@ Total test cases: **249**
 | 27 | WB-PATH  PATCH /staff-attendance/register/:staffId record is always stored with the caller's businessId | PASS |
 | 28 | WB-PATH  PATCH /staff-attendance/register/:staffId schedule lookup uses ONLY isOff:false windows of that weekday, ordered by startTime | PASS |
 | 29 | WB-PATH  GET /staff-attendance/staff/:id/history — month arithmetic builds [start, end) with end = start + 1 month (incl. December -> January rollover) | PASS |
+| 30 | WB-PATH  /profile handlers PATCH with no parsed body -> treated as {} -> 200 no-op, account.update called with empty data | PASS |
+| 31 | WB-PATH  /profile handlers POST /password with no parsed body -> treated as {} -> 400 "required" | PASS |
+| 32 | WB-PATH  /profile handlers PATCH validation error returns BEFORE touching the database | PASS |
+| 33 | WB-PATH  /profile handlers POST /password with a wrong current password never writes | PASS |
+
+### `tests/whitebox/profileHelpers.whitebox.test.js`
+
+| # | Test case | Result |
+|---|---|---|
+| 1 | WB-PROFILE  serializeProfile undefined columns -> null (every ?? null branch) | PASS |
+| 2 | WB-PROFILE  serializeProfile displayName: first + last | PASS |
+| 3 | WB-PROFILE  serializeProfile displayName: first only | PASS |
+| 4 | WB-PROFILE  serializeProfile displayName: last only | PASS |
+| 5 | WB-PROFILE  serializeProfile displayName: empty strings -> null | PASS |
+| 6 | WB-PROFILE  serializeProfile only whitelisted keys are returned (no passwordHash / email / businessId) | PASS |
+| 7 | WB-PROFILE  isValidAvatar — one case per branch null -> true | PASS |
+| 8 | WB-PROFILE  isValidAvatar — one case per branch undefined / number -> false (non-string branch) | PASS |
+| 9 | WB-PROFILE  isValidAvatar — one case per branch preset: prefix -> true only for known keys | PASS |
+| 10 | WB-PROFILE  isValidAvatar — one case per branch data URL -> pattern AND length must both hold (&& short-circuit) | PASS |
+| 11 | WB-PROFILE  pickProfileUpdate keys absent from the body are skipped (`continue` branch) -> empty data | PASS |
+| 12 | WB-PROFILE  pickProfileUpdate null is allowed and stored as null | PASS |
+| 13 | WB-PROFILE  pickProfileUpdate non-null non-string -> error, returns before later keys | PASS |
+| 14 | WB-PROFILE  pickProfileUpdate trims, and whitespace-only becomes null (`\|\| null` branch) | PASS |
+| 15 | WB-PROFILE  pickProfileUpdate length is checked AFTER trimming (120 chars + padding is fine) | PASS |
+| 16 | WB-PROFILE  pickProfileUpdate avatar is validated separately and never trimmed | PASS |
+| 17 | WB-PROFILE  pickProfileUpdate never returns both data and error | PASS |
+| 18 | WB-PROFILE  pickProfileUpdate ignores keys outside PROFILE_FIELDS + avatar | PASS |
+| 19 | WB-PROFILE  frontend / backend parity AVATAR_PRESET_KEYS lists exactly the keys of AVATAR_PRESETS in frontend Avatar.jsx | PASS |
 
 ### `tests/whitebox/staffHelpers.whitebox.test.js`
 
@@ -304,3 +387,8 @@ Total test cases: **249**
 | 12 | WB-STAFF  serializeStaffDetail includes every list-item field plus the detail fields | PASS |
 | 13 | WB-STAFF  serializeStaffDetail never exposes businessId (internal tenant key) | PASS |
 | 14 | WB-STAFF  serializeStaffDetail STAFF_DETAIL_INCLUDE requests all four relations | PASS |
+| 15 | WB-STAFF  serializeStaffListItem list-chip fields weekSchedule: undefined workingSchedule -> [] (default-parameter branch) | PASS |
+| 16 | WB-STAFF  serializeStaffListItem list-chip fields weekSchedule: off-day vs working window (isOff ternary, both branches) | PASS |
+| 17 | WB-STAFF  serializeStaffListItem list-chip fields responsibilities: no workResponsibility row and no lists -> all empty (wr ? : [] and ?? [] branches) | PASS |
+| 18 | WB-STAFF  serializeStaffListItem list-chip fields responsibilities: only true module flags become labels, in fixed order | PASS |
+| 19 | WB-STAFF  serializeStaffListItem list-chip fields responsibilities: relation names are listed; missing relation / name is dropped (filter(Boolean)) | PASS |

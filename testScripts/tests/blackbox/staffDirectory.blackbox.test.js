@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import request from 'supertest'
 import { buildApp, freshWorld, bearer, fake } from '../helpers/testApp.js'
-import { seedBusiness, seedAccount, seedStaff } from '../helpers/fakePrisma.js'
+import { seedBusiness, seedAccount, seedStaff, seedSchedule } from '../helpers/fakePrisma.js'
 
 let app
 const auth = () => bearer('acc1')
@@ -77,6 +77,28 @@ describe('BB-STAFF  List / search / filter  GET /staff', () => {
     const res = await api('get', `/staff${qs}`)
     expect(res.status).toBe(200)
     expect(res.body.map((s) => s.accountId)).toEqual(expected)
+  })
+
+  it('TC-S37 list item carries a compact weekSchedule and named responsibilities (for list chips)', async () => {
+    const aditi = fake.prisma._db.staff[0]
+    seedSchedule(fake.prisma, aditi.id, [
+      { dayOfWeek: 'MON', startTime: '09:00', endTime: '13:00' },
+      { dayOfWeek: 'MON', startTime: '14:00', endTime: '18:00' },
+      { dayOfWeek: 'SUN', isOff: true },
+    ])
+    fake.prisma._db.workspaceResponsibility.push({ staffId: aditi.id, workspaceId: 'w1' })
+    fake.prisma._db.resourceResponsibility.push({ staffId: aditi.id, resourceId: 'r1' })
+    const res = await api('get', '/staff')
+    const row = res.body.find((s) => s.accountId === 'ACC-1')
+    expect(row.weekSchedule).toEqual([
+      { dayOfWeek: 'MON', start: '09:00', end: '13:00' },
+      { dayOfWeek: 'MON', start: '14:00', end: '18:00' },
+      { dayOfWeek: 'SUN', isOff: true },
+    ])
+    expect(row.responsibilities).toEqual({ modules: ['Recruitment'], workspaces: ['WS w1'], resources: ['RES r1'] })
+    const rohan = res.body.find((s) => s.accountId === 'ACC-2')
+    expect(rohan.weekSchedule).toEqual([])
+    expect(rohan.responsibilities).toEqual({ modules: [], workspaces: [], resources: [] })
   })
 
   it('TC-S07 staff of another business are never returned (tenant isolation)', async () => {
