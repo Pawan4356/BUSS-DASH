@@ -1,4 +1,4 @@
-# PARSOR — Multi-Module Business Dashboard
+# PARSOR <i>(Multi-Module Business Dashboard)</i>
 
 PARSOR (internal codename **BUSS-DASH**) is a dashboard for running a business's people
 and physical resources. A business buys the modules it needs, and each one is unlocked
@@ -14,8 +14,6 @@ independently:
 
 On top of the modules there is sign-in, a per-account **profile page** (name, job title,
 contact details, timezone, avatar, password change) and a light/dark theme.
-
----
 
 ## Contents
 
@@ -34,28 +32,9 @@ contact details, timezone, avatar, password change) and a light/dark theme.
 13. [Known limitations](#13-known-limitations)
 14. [Troubleshooting](#14-troubleshooting)
 
----
-
 ## 1. Architecture
 
-```
-                ┌──────────────────────────────┐
-                │  Frontend (React + Vite)     │  http://localhost:5173
-                │  Redux Toolkit / RTK Query   │
-                └──────────┬───────────┬───────┘
-          JWT (Bearer)     │           │     JWT (Bearer, same token)
-                           ▼           ▼
-   ┌────────────────────────────┐   ┌──────────────────────────────┐
-   │ Express API (Node)         │   │ FastAPI scheduling engine    │
-   │ auth, profile, CRUD for 4  │   │ Operational Scheduling only: │
-   │ modules, entitlement gate  │   │ conflicts, summary, trends   │
-   │ :4000  — Prisma            │   │ :8000  — SQLAlchemy          │
-   └─────────────┬──────────────┘   └──────────────┬───────────────┘
-                 └──────────────┬──────────────────┘
-                                ▼
-                      PostgreSQL (one database)
-                  schema owned by prisma/schema.prisma
-```
+![Image](docs/media/image1.png)
 
 | Layer | Technology |
 |---|---|
@@ -71,8 +50,6 @@ contact details, timezone, avatar, password change) and a light/dark theme.
 - **One token.** Express signs a JWT on login using `JWT_SECRET`. FastAPI verifies the
   same token with the same secret, so the frontend sends one token to both services.
 - **One `.env`** at the repository root is shared by Prisma, Express, FastAPI and Vite.
-
----
 
 ## 2. Getting started
 
@@ -136,8 +113,6 @@ Open <http://localhost:5173> and sign in with **`kavita.raman@meridianhealth.in`
 | `npm run test --workspace backend/express` | Run the test suite (see [Testing](#11-testing)) |
 | `npm run test:cases --workspace backend/express` | Run the suite and regenerate `testScripts/tests/TEST_CASES.md` |
 
----
-
 ## 3. Demo accounts
 
 The seed (`backend/express/src/seed.js`, data in `backend/express/src/seed-data/`, one
@@ -166,8 +141,6 @@ changes made in those companies, but leaves any business you created yourself al
 
 Full account list, per-company counts, attendance personas, which record covers which
 use case, and how to add seed data: **[`docs/seed-data.md`](./docs/seed-data.md)**.
-
----
 
 ## 4. Entitlements: who can see what
 
@@ -201,53 +174,9 @@ Account **roles** (`OWNER`, `STAFF_MANAGER`, `RECRUITMENT_MANAGER`, `ATTENDANCE_
 enforced** by the API. Access is per business, not per role (see
 [Known limitations](#13-known-limitations)).
 
----
-
 ## 5. Repository layout
 
-```
-.
-├── .env.example                 Template for the shared root .env
-├── package.json                 npm workspaces + top-level dev/prisma scripts
-├── prisma/
-│   ├── schema.prisma            Single source of truth for the database
-│   └── migrations/              bussdash (initial), account_profile (profiles + avatars)
-├── backend/
-│   ├── express/src/
-│   │   ├── index.js             App entry: CORS, JSON (1 MB limit), routers, error handler
-│   │   ├── routes/              auth, profile, staffDirectory, staffRecruitment,
-│   │   │                        staffAttendance, resourceDirectory
-│   │   ├── middleware/          auth.js (JWT → req.account), requireFlag.js (entitlements)
-│   │   ├── lib/                 entitlements, per-module helpers, prisma client, loadEnv
-│   │   ├── seed.js              Seed runner
-│   │   └── seed-data/           One file per demo company + shared constants
-│   └── fastapi/app/
-│       ├── main.py              App entry, CORS, /health
-│       ├── routers/scheduling.py  /scheduling/* endpoints
-│       ├── services/scheduling.py Conflict detection, status classification, utilisation
-│       ├── models.py            SQLAlchemy mirror of the Prisma tables
-│       ├── auth.py, entitlements.py, config.py, db.py, schemas.py
-├── frontend/
-│   ├── index.html               Fonts (DM Sans, Young Serif), favicon
-│   ├── public/                  favicon.svg, parsor-logo-kit/ (logo source files)
-│   └── src/
-│       ├── main.jsx, App.jsx    Store, router, route table
-│       ├── app/                 Layout (sidebar), LoginPage, ProfilePage, auth slice,
-│       │                        RequireAuth / RequireModule guards, Redux store
-│       ├── api/                 RTK Query base APIs (Express, FastAPI), auth, profile
-│       ├── modules/             One folder per module: routes.jsx, api.js, pages
-│       └── shared/
-│           ├── components/      Reusable UI (Modal, Tabs, DatePicker, Avatar, ParsorLogo…)
-│           ├── flags/           Frontend copy of entitlement logic + module list
-│           ├── ui-tags/         All display labels / status names in one place
-│           ├── time/            Date/time helpers, useNow() ticking clock
-│           └── styles/theme.css Design tokens, light/dark themes, all component styles
-├── testScripts/                 Test suite (Vitest) for the Express backend + TEST_CASES.md generator
-└── docs/
-    └── seed-data.md             Demo data, accounts, use-case coverage, profile feature
-```
-
----
+![Image](docs/media/image2.png)
 
 ## 6. Backend: Express API
 
@@ -280,8 +209,6 @@ Notes:
   (`lib/attendanceHelpers.js`). The tests use a 09:00–17:00 schedule.
 - Errors are returned as `{ message }` with the matching HTTP status.
 
----
-
 ## 7. Backend: FastAPI scheduling engine
 
 Base URL `http://localhost:8000`. Interactive docs at <http://localhost:8000/docs>.
@@ -303,8 +230,6 @@ and one or more time windows. Their status (`UPCOMING` / `ACTIVE` / `COMPLETED` 
 `CANCELLED`) is recomputed from the
 current date and time, and the operational status of workspaces/resources is refreshed
 from it.
-
----
 
 ## 8. Database
 
@@ -329,8 +254,6 @@ When you change the schema: run `npm run prisma:migrate` (it creates a new migra
 regenerates the client), update the SQLAlchemy mirror in `backend/fastapi/app/models.py`
 if FastAPI uses the table, and add fields to the seed data / fake test database as needed.
 
----
-
 ## 9. Frontend
 
 - **Routing** (`src/App.jsx`): `/login` is public. Everything else sits inside
@@ -354,8 +277,6 @@ if FastAPI uses the table, and add fields to the seed data / fake test database 
 - **Labels**: every user-visible field name and status label comes from
   `shared/ui-tags` rather than being hard-coded per module.
 
----
-
 ## 10. Branding and theme
 
 - **Logo**: `ParsorLogo` (`shared/components/ParsorLogo.jsx`) draws the "parsor" wordmark
@@ -371,8 +292,6 @@ if FastAPI uses the table, and add fields to the seed data / fake test database 
   Dark mode follows the OS by default and can be toggled. The choice is stored in
   `localStorage` and applied as `data-theme` on `<html>`. Fonts: DM Sans (UI) and Young
   Serif (page titles).
-
----
 
 ## 11. Testing
 
@@ -447,7 +366,6 @@ Not covered by automated tests: Recruitment, Resource Directory, Scheduling (Fas
 the React UI. When you change the code in scope, add or adjust tests, then run
 `test:coverage` (should stay at 100%) and `test:cases`.
 
----
 
 ## 12. Design decisions
 
@@ -501,30 +419,3 @@ defensible default, and code comments refer to these by number
 The original spec (`dashboard-system-spec-draft-v1.md`) and the earlier `docs/decisions.md`
 / `docs/setup.md` were removed in commit `d882396`. Their content is folded into this
 README, and the originals are still in git history.
-
----
-
-## 13. Known limitations
-
-- Roles are not enforced by the API (DEF-07, DEF-08). Any account in a business can
-  perform any action in a module the business has purchased.
-- Logout is client-side only. Tokens stay valid until they expire (7 days).
-- Avatars are stored inline in the database as data URLs. That's fine for a demo, but
-  object storage would be better in production.
-- There is no self-service signup or module purchasing. Businesses and flags come from the
-  seed or direct database edits.
-- See the defect table in [Testing](#11-testing) for attendance edge cases.
-
----
-
-## 14. Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `prisma migrate dev` fails with `P3014` (can't create shadow database) | The DB user needs `CREATEDB` (step 3 grants it). Prisma creates a throwaway shadow DB to diff migrations |
-| Express errors about unknown fields after a schema change | Run `npm run prisma:generate`, then restart Express |
-| Express or Vite can't see variables from `.env` | The file must be at the **repo root**, not inside `frontend/` or `backend/express/` |
-| FastAPI returns 401 for a token that works on Express | `JWT_SECRET` differs between the processes. Restart both after editing `.env` |
-| Scheduling pages fail to load | FastAPI isn't running, or `VITE_FASTAPI_URL` points to the wrong port |
-| A module shows as locked | Expected for that company. Check the `reason` against [Entitlements](#4-entitlements-who-can-see-what), or sign in as Meridian Health |
-| Demo data looks stale or was edited | Re-run `npm run --workspace backend/express seed` |
