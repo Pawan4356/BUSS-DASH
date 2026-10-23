@@ -7,26 +7,20 @@ middleware run unmodified.
 
 ## Setup (once)
 
-Copy `tests/` and `vitest.config.js` into `backend/express/` of the repo, then:
+From the repository root, install the workspace dependencies:
 
 ```bash
-cd backend/express
 npm install
-npm install -D vitest@^2 @vitest/coverage-v8@^2 supertest@^7
-npm pkg set scripts.test="vitest run"
-npm pkg set scripts.test:blackbox="vitest run tests/blackbox"
-npm pkg set scripts.test:whitebox="vitest run tests/whitebox"
-npm pkg set scripts.test:coverage="vitest run --coverage"
 ```
 
 ## Run
 
 | Command | What it does |
 |---|---|
-| `npm test` | all tests |
-| `npm run test:blackbox` | black-box only |
-| `npm run test:whitebox` | white-box only |
-| `npm run test:coverage` | all tests + statement/branch coverage table (HTML in `coverage/index.html`) |
+| `npm run test --workspace backend/express` | all tests |
+| `npm run test:blackbox --workspace backend/express` | black-box only |
+| `npm run test:whitebox --workspace backend/express` | white-box only |
+| `npm run test:coverage --workspace backend/express` | all tests + statement/branch coverage table (HTML in `coverage/index.html`) |
 
 `tests/whitebox/entitlements.whitebox.test.js` also compares the frontend copy of the flag logic
 (`frontend/src/shared/flags`) with the backend copy; it needs the repo's original folder layout

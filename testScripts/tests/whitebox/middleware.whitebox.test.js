@@ -6,9 +6,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { fake, tokenFor } from '../helpers/testApp.js'
 import { createFakePrisma, seedBusiness, seedAccount } from '../helpers/fakePrisma.js'
-import { requireAuth } from '../../src/middleware/auth.js'
-import { requireFlag } from '../../src/middleware/requireFlag.js'
-import { asyncHandler } from '../../src/lib/asyncHandler.js'
+import { requireAuth } from '../../../backend/express/src/middleware/auth.js'
+import { requireFlag } from '../../../backend/express/src/middleware/requireFlag.js'
+import { asyncHandler } from '../../../backend/express/src/lib/asyncHandler.js'
 
 const mockRes = () => {
   const res = {}

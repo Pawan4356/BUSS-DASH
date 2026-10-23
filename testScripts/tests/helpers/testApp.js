@@ -9,16 +9,16 @@ import { createFakePrisma, seedBusiness, seedAccount } from './fakePrisma.js'
 export const fake = { prisma: null }
 
 // Hoisted by vitest: every `../lib/prisma.js` import resolves to the fake.
-vi.mock('../../src/lib/prisma.js', () => ({
+vi.mock('../../../backend/express/src/lib/prisma.js', () => ({
   get prisma() {
     return fake.prisma
   },
 }))
 
 export async function buildApp() {
-  const { authRouter } = await import('../../src/routes/auth.js')
-  const { staffDirectoryRouter } = await import('../../src/routes/staffDirectory.js')
-  const { staffAttendanceRouter } = await import('../../src/routes/staffAttendance.js')
+  const { authRouter } = await import('../../../backend/express/src/routes/auth.js')
+  const { staffDirectoryRouter } = await import('../../../backend/express/src/routes/staffDirectory.js')
+  const { staffAttendanceRouter } = await import('../../../backend/express/src/routes/staffAttendance.js')
 
   const app = express()
   app.use(express.json())

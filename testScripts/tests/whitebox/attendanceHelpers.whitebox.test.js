@@ -4,7 +4,7 @@
  * time comparison ("HH:mm" compared lexicographically).
  */
 import { describe, it, expect } from 'vitest'
-import { computeLateEarly, dayOfWeekForDate, startOfDay, stayTimeMinutes } from '../../src/lib/attendanceHelpers.js'
+import { computeLateEarly, dayOfWeekForDate, startOfDay, stayTimeMinutes } from '../../../backend/express/src/lib/attendanceHelpers.js'
 
 const win = (startTime, endTime) => ({ startTime, endTime })
 const iso = (hhmm) => `2026-09-22T${hhmm}:00`

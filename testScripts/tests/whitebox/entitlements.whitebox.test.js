@@ -6,7 +6,7 @@
  * Cyclomatic complexity of resolveModuleAccess = 17  ->  17 independent paths.
  */
 import { describe, it, expect } from 'vitest'
-import { resolveModuleAccess, FLAGS } from '../../src/lib/entitlements.js'
+import { resolveModuleAccess, FLAGS } from '../../../backend/express/src/lib/entitlements.js'
 
 const flags = (o = {}) => ({
   staffDirectory: false, staffRecruitment: false, staffAttendance: false,
@@ -94,7 +94,7 @@ describe('WB-ENT  frontend <-> backend parity', () => {
   it('both copies return identical results for every flag combination', async () => {
     let front
     try {
-      front = await import('../../../../frontend/src/shared/flags/index.js')
+      front = await import('../../../frontend/src/shared/flags/index.js')
     } catch {
       console.warn('frontend/src/shared/flags not found next to backend/ — parity test skipped')
       return

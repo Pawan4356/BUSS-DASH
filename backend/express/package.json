@@ -8,10 +8,10 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node src/seed.js",
-    "test": "vitest run",
-    "test:blackbox": "vitest run tests/blackbox",
-    "test:whitebox": "vitest run tests/whitebox",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest run --config ../../testScripts/vitest.config.js",
+    "test:blackbox": "vitest run --config ../../testScripts/vitest.config.js ../../testScripts/tests/blackbox",
+    "test:whitebox": "vitest run --config ../../testScripts/vitest.config.js ../../testScripts/tests/whitebox",
+    "test:coverage": "vitest run --config ../../testScripts/vitest.config.js --coverage"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

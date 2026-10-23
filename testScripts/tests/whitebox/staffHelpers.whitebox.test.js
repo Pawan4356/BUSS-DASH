@@ -3,7 +3,7 @@
  * Technique: branch coverage of name joining, responsibilitiesCount and defaults.
  */
 import { describe, it, expect } from 'vitest'
-import { serializeStaffListItem, serializeStaffDetail, STAFF_DETAIL_INCLUDE } from '../../src/lib/staffHelpers.js'
+import { serializeStaffListItem, serializeStaffDetail, STAFF_DETAIL_INCLUDE } from '../../../backend/express/src/lib/staffHelpers.js'
 
 const base = { id: 's1', accountId: 'A1', title: 'T', employmentType: 'Full-Time', status: 'ACTIVE', archived: false }
 
