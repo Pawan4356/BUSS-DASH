@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, RepeatPatternPicker, TimeWindowPicker, emptyWeeklySchedule, useToast } from '../../shared/components'
+import { Modal, RepeatPatternPicker, ScrollArea, TimeWindowPicker, emptyWeeklySchedule, useToast } from '../../shared/components'
 import { useCreateAssignmentMutation } from './api'
 
 function scheduleToWindows(schedule) {
@@ -72,7 +72,7 @@ export function AssignModal({ workspaceId, resourceId, staffOptions, onClose }) 
         <form onSubmit={handleSubmit}>
           <div className="field">
             <span className="field-label">Staff</span>
-            <div className="stack" style={{ maxHeight: 140, overflowY: 'auto' }}>
+            <ScrollArea bodyClassName="stack" maxHeight={140}>
               {staffOptions.map((s) => (
                 <label key={s.id} className="cluster" style={{ fontSize: 13 }}>
                   <input
@@ -85,7 +85,7 @@ export function AssignModal({ workspaceId, resourceId, staffOptions, onClose }) 
                   {s.name}
                 </label>
               ))}
-            </div>
+            </ScrollArea>
           </div>
 
           <div className="field">

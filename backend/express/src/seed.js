@@ -1,667 +1,321 @@
 import './lib/loadEnv.js'
 import bcrypt from 'bcryptjs'
 import { prisma } from './lib/prisma.js'
+import { computeLateEarly } from './lib/attendanceHelpers.js'
+import { COMPANIES, LEGACY_BUSINESS_IDS, SEED_PASSWORD } from './seed-data/index.js'
 
-const BUSINESS_ID = 'demo-business'
-const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
-const ALL_DAYS = [...WEEKDAYS, 'SAT', 'SUN']
+// Seeds every company in seed-data/. Each run deletes and recreates those
+// businesses (all child rows cascade), so the dataset is always fresh and
+// relative to today. See docs/seed-data.md for what each company covers.
 
-function dateOnly(offsetDays = 0) {
+const DAY_KEYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+
+// ─── Dates ────────────────────────────────────────────────────────────────
+// Attendance dates mirror startOfDay() in attendanceHelpers (local midnight)
+// so seeded rows line up with what the register queries for "today" on any
+// server timezone. Assignment dates are plain calendar dates (UTC midnight of
+// the local date), which is what FastAPI compares against date.today().
+
+function localMidnight(offsetDays = 0) {
   const d = new Date()
-  d.setUTCHours(0, 0, 0, 0)
-  d.setUTCDate(d.getUTCDate() + offsetDays)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + offsetDays)
   return d
 }
 
-function atTime(offsetDays, hhmm) {
+function localAt(offsetDays, hhmm, shiftMinutes = 0) {
   const [h, m] = hhmm.split(':').map(Number)
-  const d = dateOnly(offsetDays)
-  d.setUTCHours(h, m, 0, 0)
+  const d = localMidnight(offsetDays)
+  d.setHours(h, m + shiftMinutes, 0, 0)
   return d
 }
 
-/** Wipes every module row scoped to the demo business, so re-running the
- * seed always leaves a clean, predictable dataset instead of piling up
- * duplicates. Business/BusinessFlags/Account are left alone (upserted). */
-async function resetDemoData() {
-  await prisma.assignment.deleteMany({ where: { businessId: BUSINESS_ID } })
-  await prisma.candidate.deleteMany({ where: { recruitment: { businessId: BUSINESS_ID } } })
-  await prisma.interviewRound.deleteMany({ where: { recruitment: { businessId: BUSINESS_ID } } })
-  await prisma.recruitment.deleteMany({ where: { businessId: BUSINESS_ID } })
-  await prisma.attendanceRecord.deleteMany({ where: { businessId: BUSINESS_ID } })
-  await prisma.workingScheduleEntry.deleteMany({ where: { staff: { businessId: BUSINESS_ID } } })
-  await prisma.workResponsibility.deleteMany({ where: { staff: { businessId: BUSINESS_ID } } })
-  await prisma.workspaceResponsibility.deleteMany({ where: { staff: { businessId: BUSINESS_ID } } })
-  await prisma.resourceResponsibility.deleteMany({ where: { staff: { businessId: BUSINESS_ID } } })
-  await prisma.staff.deleteMany({ where: { businessId: BUSINESS_ID } })
-  await prisma.resourceWorkspace.deleteMany({ where: { resource: { businessId: BUSINESS_ID } } })
-  await prisma.subSpace.deleteMany({ where: { workspace: { businessId: BUSINESS_ID } } })
-  await prisma.resource.deleteMany({ where: { businessId: BUSINESS_ID } })
-  await prisma.workspace.deleteMany({ where: { businessId: BUSINESS_ID } })
+function calendarDate(offsetDays = 0) {
+  const d = localMidnight(offsetDays)
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
 }
 
-function weeklySchedule(days, start, end) {
-  return {
-    create: days.map((dayOfWeek) => ({ dayOfWeek, isOff: false, startTime: start, endTime: end })),
+function dayKey(offsetDays = 0) {
+  return DAY_KEYS[localMidnight(offsetDays).getDay()]
+}
+
+function nowHHMM() {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** Deterministic 0..1 noise so attendance looks organic but is stable per seed run. */
+function noise(seed) {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return ((h >>> 0) % 1000) / 1000
+}
+
+// ─── Builders ─────────────────────────────────────────────────────────────
+
+/** Expands [{ days, start, end }, { days, off: true }] into WorkingScheduleEntry rows. */
+function expandSchedule(blocks = []) {
+  return blocks.flatMap((block) =>
+    block.days.map((dayOfWeek) =>
+      block.off
+        ? { dayOfWeek, isOff: true, startTime: null, endTime: null }
+        : { dayOfWeek, isOff: false, startTime: block.start, endTime: block.end },
+    ),
+  )
+}
+
+function windowsFor(schedule, dow) {
+  return schedule
+    .filter((w) => w.dayOfWeek === dow && !w.isOff)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+}
+
+async function createBusiness(company) {
+  return prisma.business.create({
+    data: {
+      id: company.id,
+      name: company.name,
+      verificationLevel: company.verificationLevel,
+      recruitmentModelType: company.recruitmentModelType,
+      flags: { create: company.flags },
+    },
+  })
+}
+
+async function createAccounts(company, passwordHash) {
+  for (const account of company.accounts) {
+    await prisma.account.create({ data: { ...account, businessId: company.id, passwordHash } })
   }
 }
 
-async function seedStaff() {
-  const roster = [
-    {
-      accountId: 'ACC-1001',
-      firstName: 'Aditi',
-      lastName: 'Sharma',
-      title: 'Front Desk Manager',
-      employmentType: 'Full-Time',
-      status: 'ACTIVE',
-      gender: 'Female',
-      phoneNumber: '+91 90000 10001',
-      dateOfJoining: dateOnly(-540),
-      yearsOfExperience: 6,
-      qualifications: 'B.Com, Hospitality Management Diploma',
-      schedule: weeklySchedule(WEEKDAYS, '09:00', '17:00'),
-      responsibility: { staffRecruitment: true, staffAttendance: false, operationalScheduling: true },
-    },
-    {
-      accountId: 'ACC-1002',
-      firstName: 'Rohan',
-      lastName: 'Mehta',
-      title: 'Staff Nurse',
-      employmentType: 'Full-Time',
-      status: 'ACTIVE',
-      gender: 'Male',
-      phoneNumber: '+91 90000 10002',
-      dateOfJoining: dateOnly(-720),
-      yearsOfExperience: 4,
-      qualifications: 'B.Sc Nursing',
-      schedule: weeklySchedule(['MON', 'WED', 'FRI'], '09:00', '13:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: true, operationalScheduling: true },
-    },
-    {
-      accountId: 'ACC-1003',
-      firstName: 'Priya',
-      lastName: 'Nair',
-      title: 'Radiology Technician',
-      employmentType: 'Part-Time',
-      status: 'ACTIVE',
-      gender: 'Female',
-      phoneNumber: '+91 90000 10003',
-      dateOfJoining: dateOnly(-300),
-      yearsOfExperience: 3,
-      qualifications: 'Diploma in Radiography',
-      schedule: weeklySchedule(['TUE', 'THU'], '10:00', '16:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: true },
-    },
-    {
-      accountId: 'ACC-1004',
-      firstName: 'Karan',
-      lastName: 'Verma',
-      title: 'Delivery Driver',
-      employmentType: 'Contract',
-      status: 'ACTIVE',
-      gender: 'Male',
-      phoneNumber: '+91 90000 10004',
-      dateOfJoining: dateOnly(-180),
-      yearsOfExperience: 8,
-      qualifications: 'Commercial Driving License',
-      schedule: weeklySchedule(WEEKDAYS, '08:00', '18:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: true },
-    },
-    {
-      accountId: 'ACC-1005',
-      firstName: 'Sneha',
-      lastName: 'Iyer',
-      title: 'Receptionist',
-      employmentType: 'Full-Time',
-      status: 'ON_LEAVE',
-      gender: 'Female',
-      phoneNumber: '+91 90000 10005',
-      dateOfJoining: dateOnly(-420),
-      yearsOfExperience: 2,
-      qualifications: 'BA English',
-      schedule: weeklySchedule(WEEKDAYS, '09:00', '17:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: false },
-    },
-    {
-      accountId: 'ACC-1006',
-      firstName: 'Arjun',
-      lastName: 'Rao',
-      title: 'Security Officer',
-      employmentType: 'Full-Time',
-      status: 'ACTIVE',
-      gender: 'Male',
-      phoneNumber: '+91 90000 10006',
-      dateOfJoining: dateOnly(-900),
-      yearsOfExperience: 10,
-      qualifications: 'Certified Security Guard',
-      schedule: weeklySchedule(ALL_DAYS, '18:00', '23:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: true },
-    },
-    {
-      accountId: 'ACC-1007',
-      firstName: 'Meera',
-      lastName: 'Joshi',
-      title: 'Housekeeping Staff',
-      employmentType: 'Part-Time',
-      status: 'SUSPENDED',
-      gender: 'Female',
-      phoneNumber: '+91 90000 10007',
-      dateOfJoining: dateOnly(-260),
-      yearsOfExperience: 1,
-      qualifications: null,
-      schedule: weeklySchedule(WEEKDAYS, '07:00', '11:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: false },
-    },
-    {
-      accountId: 'ACC-1008',
-      firstName: 'Vikram',
-      lastName: 'Singh',
-      title: 'Maintenance Technician',
-      employmentType: 'Full-Time',
-      status: 'RESIGNED',
-      gender: 'Male',
-      phoneNumber: '+91 90000 10008',
-      dateOfJoining: dateOnly(-1100),
-      yearsOfExperience: 12,
-      qualifications: 'ITI Electrician',
-      schedule: { create: [] },
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: false },
-      archived: true,
-    },
-    {
-      accountId: 'ACC-1009',
-      firstName: 'Ananya',
-      lastName: 'Gupta',
-      title: 'Front Desk Intern',
-      employmentType: 'Intern',
-      status: 'ACTIVE',
-      gender: 'Female',
-      phoneNumber: '+91 90000 10009',
-      dateOfJoining: dateOnly(-45),
-      yearsOfExperience: 0,
-      qualifications: 'Pursuing BBA',
-      schedule: weeklySchedule(WEEKDAYS, '10:00', '15:00'),
-      responsibility: { staffRecruitment: false, staffAttendance: false, operationalScheduling: false },
-    },
-    {
-      accountId: 'ACC-1010',
-      firstName: null,
-      lastName: null,
-      title: null,
-      employmentType: null,
-      status: 'PENDING',
-      schedule: { create: [] },
-      responsibility: null,
-    },
-  ]
-
-  const created = {}
-  for (const person of roster) {
+async function createStaff(company) {
+  const byKey = {}
+  for (const person of company.staff ?? []) {
+    const { key, schedule, responsibility, joinedDaysAgo, birthDate, archived, attendance, ...fields } = person
+    const workingSchedule = expandSchedule(schedule)
     const staff = await prisma.staff.create({
       data: {
-        businessId: BUSINESS_ID,
-        accountId: person.accountId,
-        firstName: person.firstName,
-        lastName: person.lastName,
-        title: person.title,
-        employmentType: person.employmentType,
-        status: person.status,
-        gender: person.gender ?? null,
-        phoneNumber: person.phoneNumber ?? null,
-        dateOfJoining: person.dateOfJoining ?? null,
-        yearsOfExperience: person.yearsOfExperience ?? null,
-        qualifications: person.qualifications ?? null,
-        archived: Boolean(person.archived),
-        workingSchedule: person.schedule,
-        ...(person.responsibility && { workResponsibility: { create: person.responsibility } }),
+        ...fields,
+        accountId: key,
+        businessId: company.id,
+        archived: Boolean(archived),
+        dateOfJoining: joinedDaysAgo == null ? null : calendarDate(-joinedDaysAgo),
+        dateOfBirth: birthDate ? new Date(`${birthDate}T00:00:00Z`) : null,
+        workingSchedule: { create: workingSchedule },
+        ...(responsibility && { workResponsibility: { create: responsibility } }),
       },
     })
-    created[person.accountId] = staff
+    byKey[key] = { ...staff, workingSchedule, attendance }
   }
-  return created
+  return byKey
 }
 
-async function seedResourceDirectory(staff) {
-  const mainClinic = await prisma.workspace.create({
-    data: {
-      businessId: BUSINESS_ID,
-      name: 'Main Clinic',
-      type: 'Clinic',
-      businessStatus: 'ACTIVE',
-      subSpaces: { create: [{ name: 'Consultation Room 1' }, { name: 'Consultation Room 2' }, { name: 'Waiting Area' }] },
-    },
-  })
-  const warehouse = await prisma.workspace.create({
-    data: {
-      businessId: BUSINESS_ID,
-      name: 'Warehouse A',
-      type: 'Storage',
-      businessStatus: 'ACTIVE',
-      subSpaces: { create: [{ name: 'Cold Storage' }, { name: 'Dry Storage' }] },
-    },
-  })
-  await prisma.workspace.create({
-    data: { businessId: BUSINESS_ID, name: 'Front Desk', type: 'Reception', businessStatus: 'ACTIVE' },
-  })
-
-  const beds = []
-  for (let i = 1; i <= 4; i += 1) {
-    beds.push(
-      await prisma.resource.create({
-        data: {
-          businessId: BUSINESS_ID,
-          name: `Patient Bed(${i})`,
-          category: 'Bed',
-          behavior: 'SHARED',
-          schedulingRequired: true,
-          businessStatus: i === 4 ? 'MAINTENANCE' : 'ACTIVE',
-          workspaces: { create: [{ workspaceId: mainClinic.id }] },
-        },
-      }),
-    )
-  }
-
-  const xray = await prisma.resource.create({
-    data: {
-      businessId: BUSINESS_ID,
-      name: 'X-Ray Machine',
-      category: 'Machine',
-      behavior: 'DEDICATED',
-      schedulingRequired: true,
-      businessStatus: 'ACTIVE',
-      workspaces: { create: [{ workspaceId: mainClinic.id }] },
-    },
-  })
-
-  const vans = []
-  for (let i = 1; i <= 2; i += 1) {
-    vans.push(
-      await prisma.resource.create({
-        data: {
-          businessId: BUSINESS_ID,
-          name: `Delivery Van(${i})`,
-          category: 'Vehicle',
-          behavior: 'SHARED',
-          schedulingRequired: true,
-          businessStatus: 'ACTIVE',
-        },
-      }),
-    )
-  }
-
-  for (let i = 1; i <= 3; i += 1) {
-    await prisma.resource.create({
+async function createResourceDirectory(company, staff) {
+  const workspaces = {}
+  for (const ws of company.workspaces ?? []) {
+    const { subSpaces = [], responsible = [], ...fields } = ws
+    const created = await prisma.workspace.create({
       data: {
-        businessId: BUSINESS_ID,
-        name: `Front Desk Laptop(${i})`,
-        category: 'Equipment',
-        behavior: 'DEDICATED',
-        schedulingRequired: false,
-        businessStatus: 'ACTIVE',
+        ...fields,
+        businessId: company.id,
+        subSpaces: { create: subSpaces.map((name) => ({ name })) },
+        responsibleStaff: { create: responsible.map((key) => ({ staffId: staff[key].id })) },
       },
     })
+    workspaces[ws.name] = created
   }
 
-  await prisma.resource.create({
-    data: {
-      businessId: BUSINESS_ID,
-      name: 'Cold Storage Freezer',
-      category: 'Equipment',
-      behavior: 'SHARED',
-      schedulingRequired: false,
-      businessStatus: 'ACTIVE',
-      workspaces: { create: [{ workspaceId: warehouse.id }] },
-    },
-  })
-
-  await prisma.workspaceResponsibility.create({
-    data: { staffId: staff['ACC-1001'].id, workspaceId: mainClinic.id },
-  })
-  await prisma.resourceResponsibility.create({
-    data: { staffId: staff['ACC-1002'].id, resourceId: beds[0].id },
-  })
-  await prisma.resourceResponsibility.create({
-    data: { staffId: staff['ACC-1003'].id, resourceId: xray.id },
-  })
-
-  return { mainClinic, warehouse, beds, xray, vans }
-}
-
-async function seedRecruitment(staff) {
-  const nurse = await prisma.recruitment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      role: 'Registered Nurse',
-      experienceRequired: '2+ years',
-      employmentType: 'Full-Time',
-      numberOfOpenings: 2,
-      description: 'Provide patient care across our clinic locations.',
-      requirements: 'B.Sc Nursing, valid registration',
-      benefits: 'Health insurance, paid leave',
-      audience: 'B2C',
-      status: 'ACTIVE',
-      launchDate: dateOnly(-20),
-      interviewRequired: true,
-      interviewRounds: {
-        create: [
-          {
-            roundNumber: 1,
-            type: 'ONLINE',
-            onlineLink: 'https://meet.example.com/nurse-r1',
-            date: dateOnly(-10),
-            time: '11:00',
-            interviewerStaffId: staff['ACC-1001'].id,
-            description: 'Screening call',
-            status: 'COMPLETED',
-          },
-          {
-            roundNumber: 2,
-            type: 'LOCATION',
-            locationAddress: 'Main Clinic, 2nd Floor',
-            date: dateOnly(3),
-            time: '15:00',
-            interviewerStaffId: staff['ACC-1002'].id,
-            description: 'In-person clinical assessment',
-            status: 'SCHEDULED',
-          },
-        ],
-      },
-      candidates: {
-        create: [
-          {
-            accountId: 'CAND-2001',
-            name: 'Divya Menon',
-            email: 'divya.menon@example.com',
-            phone: '+91 98765 20001',
-            experience: '3 years',
-            qualifications: 'B.Sc Nursing',
-            source: 'B2C',
-            appliedDate: dateOnly(-18),
-            status: 'HIRED',
-          },
-          {
-            accountId: 'CAND-2002',
-            name: 'Farah Sheikh',
-            email: 'farah.sheikh@example.com',
-            phone: '+91 98765 20002',
-            experience: '2 years',
-            qualifications: 'B.Sc Nursing',
-            source: 'B2C',
-            appliedDate: dateOnly(-15),
-            status: 'SHORTLISTED',
-          },
-          {
-            accountId: 'CAND-2003',
-            name: 'Neha Kulkarni',
-            email: 'neha.kulkarni@example.com',
-            phone: '+91 98765 20003',
-            experience: '1 year',
-            qualifications: 'GNM Nursing',
-            source: 'B2C',
-            appliedDate: dateOnly(-9),
-            status: 'APPLIED',
-          },
-        ],
-      },
-    },
-  })
-
-  await prisma.recruitment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      role: 'Delivery Driver',
-      experienceRequired: '1+ years',
-      employmentType: 'Contract',
-      numberOfOpenings: 1,
-      description: 'Handle scheduled deliveries between warehouse and clinic sites.',
-      requirements: 'Valid commercial license',
-      audience: 'INTERNAL',
-      status: 'ACTIVE',
-      launchDate: dateOnly(-12),
-      interviewRequired: false,
-      candidates: {
-        create: [
-          {
-            name: 'Suresh Pillai',
-            phone: '+91 98765 30001',
-            experience: '5 years',
-            source: 'WALK_IN',
-            appliedDate: dateOnly(-11),
-            status: 'HIRED',
-          },
-          {
-            name: 'Manoj Tiwari',
-            phone: '+91 98765 30002',
-            experience: '6 months',
-            source: 'WALK_IN',
-            appliedDate: dateOnly(-8),
-            status: 'REJECTED',
-          },
-          {
-            name: 'Ramesh Yadav',
-            phone: '+91 98765 30003',
-            experience: '2 years',
-            source: 'WALK_IN',
-            appliedDate: dateOnly(-2),
-            status: 'APPLIED',
-          },
-        ],
-      },
-    },
-  })
-
-  await prisma.recruitment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      role: 'Lab Technician',
-      experienceRequired: '1+ years',
-      employmentType: 'Full-Time',
-      numberOfOpenings: 1,
-      description: 'Run diagnostic lab tests and maintain equipment logs.',
-      audience: 'B2C',
-      status: 'INACTIVE',
-      interviewRequired: true,
-    },
-  })
-
-  await prisma.recruitment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      role: 'Housekeeping Staff',
-      employmentType: 'Part-Time',
-      numberOfOpenings: 1,
-      audience: 'INTERNAL',
-      status: 'CLOSED',
-      launchDate: dateOnly(-60),
-      candidates: {
-        create: [
-          {
-            name: 'Geeta Devi',
-            phone: '+91 98765 40001',
-            source: 'WALK_IN',
-            appliedDate: dateOnly(-58),
-            status: 'HIRED',
-          },
-          {
-            name: 'Sunita Rani',
-            phone: '+91 98765 40002',
-            source: 'WALK_IN',
-            appliedDate: dateOnly(-57),
-            status: 'REJECTED',
-          },
-        ],
-      },
-    },
-  })
-
-  return nurse
-}
-
-async function seedAttendance(staff) {
-  const trackable = ['ACC-1001', 'ACC-1002', 'ACC-1003', 'ACC-1004', 'ACC-1006', 'ACC-1009']
-
-  for (const accountId of trackable) {
-    const person = staff[accountId]
-    for (let offset = -14; offset <= 0; offset += 1) {
-      const day = dateOnly(offset)
-      const isWeekend = day.getUTCDay() === 0 || day.getUTCDay() === 6
-      let status = 'PRESENT'
-      if (isWeekend && accountId !== 'ACC-1006') status = 'OFF'
-      else if (offset === -6) status = 'LEAVE'
-      else if (offset === -3 && accountId === 'ACC-1003') status = 'ABSENT'
-
-      const checkIn = status === 'PRESENT' ? atTime(offset, offset % 5 === 0 ? '09:20' : '09:00') : null
-      const checkOut = status === 'PRESENT' ? atTime(offset, offset % 7 === 0 ? '16:30' : '17:00') : null
-
-      await prisma.attendanceRecord.create({
+  const resources = {}
+  for (const res of company.resources ?? []) {
+    const { count = 1, workspaces: wsNames = [], responsible = {}, maintenance = [], ...fields } = res
+    // Same "Name(n)" convention the API uses when a resource is added with quantity > 1.
+    for (let i = 1; i <= count; i += 1) {
+      const name = count > 1 ? `${res.name}(${i})` : res.name
+      const owners = Array.isArray(responsible) ? responsible : responsible[i] ?? []
+      resources[name] = await prisma.resource.create({
         data: {
-          businessId: BUSINESS_ID,
-          staffId: person.id,
-          date: day,
-          status,
-          checkIn,
-          checkOut,
-          lateCheckIn: status === 'PRESENT' && offset % 5 === 0,
-          earlyCheckOut: status === 'PRESENT' && offset % 7 === 0,
+          ...fields,
+          name,
+          businessId: company.id,
+          businessStatus: maintenance.includes(i) ? 'MAINTENANCE' : fields.businessStatus ?? 'ACTIVE',
+          workspaces: { create: wsNames.map((w) => ({ workspaceId: workspaces[w].id })) },
+          responsibleStaff: { create: owners.map((key) => ({ staffId: staff[key].id })) },
         },
       })
     }
   }
+  return { workspaces, resources }
 }
 
-async function seedScheduling(staff, resources) {
-  const { mainClinic, warehouse, beds, xray, vans } = resources
-
-  await prisma.assignment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      staffId: staff['ACC-1002'].id,
-      resourceId: beds[0].id,
-      repeatPattern: 'WEEKLY',
-      startDate: dateOnly(-14),
-      note: 'Primary bedside care',
-      status: 'ACTIVE',
-      timeWindows: { create: [{ dayOfWeek: 'MON', startTime: '09:00', endTime: '13:00' }, { dayOfWeek: 'WED', startTime: '09:00', endTime: '13:00' }, { dayOfWeek: 'FRI', startTime: '09:00', endTime: '13:00' }] },
-    },
-  })
-
-  await prisma.assignment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      staffId: staff['ACC-1003'].id,
-      resourceId: xray.id,
-      workspaceId: mainClinic.id,
-      repeatPattern: 'WEEKLY',
-      startDate: dateOnly(-14),
-      status: 'ACTIVE',
-      timeWindows: { create: [{ dayOfWeek: 'TUE', startTime: '10:00', endTime: '16:00' }, { dayOfWeek: 'THU', startTime: '10:00', endTime: '16:00' }] },
-    },
-  })
-
-  await prisma.assignment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      staffId: staff['ACC-1004'].id,
-      resourceId: vans[0].id,
-      repeatPattern: 'NONE',
-      startDate: dateOnly(0),
-      note: 'Morning delivery run',
-      status: 'UPCOMING',
-      timeWindows: { create: [{ dayOfWeek: dowKey(dateOnly(0)), startTime: '08:00', endTime: '18:00' }] },
-    },
-  })
-
-  await prisma.assignment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      staffId: staff['ACC-1001'].id,
-      workspaceId: mainClinic.id,
-      repeatPattern: 'WEEKLY',
-      startDate: dateOnly(-14),
-      status: 'ACTIVE',
-      timeWindows: { create: WEEKDAYS.map((dayOfWeek) => ({ dayOfWeek, startTime: '09:00', endTime: '17:00' })) },
-    },
-  })
-
-  await prisma.assignment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      staffId: staff['ACC-1006'].id,
-      workspaceId: warehouse.id,
-      repeatPattern: 'CUSTOM',
-      repeatInterval: 2,
-      startDate: dateOnly(3),
-      status: 'UPCOMING',
-      note: 'Bi-weekly night patrol, starting next week',
-      timeWindows: { create: [{ dayOfWeek: 'SAT', startTime: '20:00', endTime: '23:00' }] },
-    },
-  })
-
-  await prisma.assignment.create({
-    data: {
-      businessId: BUSINESS_ID,
-      staffId: staff['ACC-1009'].id,
-      workspaceId: mainClinic.id,
-      repeatPattern: 'WEEKLY',
-      startDate: dateOnly(-60),
-      endDate: dateOnly(-30),
-      status: 'COMPLETED',
-      note: 'Completed onboarding rotation',
-      timeWindows: { create: [{ dayOfWeek: 'MON', startTime: '10:00', endTime: '15:00' }] },
-    },
-  })
+async function createRecruitments(company, staff) {
+  for (const rec of company.recruitments ?? []) {
+    const { rounds = [], candidates = [], launchedDaysAgo, ...fields } = rec
+    await prisma.recruitment.create({
+      data: {
+        ...fields,
+        businessId: company.id,
+        launchDate: launchedDaysAgo == null ? null : calendarDate(-launchedDaysAgo),
+        interviewRounds: {
+          create: rounds.map(({ dayOffset, interviewer, ...round }, i) => ({
+            ...round,
+            roundNumber: i + 1,
+            date: dayOffset == null ? null : calendarDate(dayOffset),
+            interviewerStaffId: interviewer && staff[interviewer] ? staff[interviewer].id : null,
+            interviewerManualName: interviewer && !staff[interviewer] ? interviewer : null,
+          })),
+        },
+        candidates: {
+          create: candidates.map(({ appliedDaysAgo, ...c }) => ({ ...c, appliedDate: calendarDate(-appliedDaysAgo) })),
+        },
+      },
+    })
+  }
 }
 
-function dowKey(date) {
-  return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.getUTCDay()]
+/**
+ * Generates `company.attendanceDays` of history per staff member from their
+ * working schedule and an attendance profile:
+ *   punctual | late-prone | leaves-early | irregular
+ * plus explicit per-day overrides ({ [-offset]: 'LEAVE' | 'ABSENT' | 'NO_CHECKOUT' }).
+ * Today is generated against the real clock: shifts not yet started get no
+ * row, shifts in progress are checked-in only, finished shifts are complete.
+ */
+async function createAttendance(company, staff) {
+  const days = company.attendanceDays ?? 0
+  const now = nowHHMM()
+  const rows = []
+
+  for (const [key, person] of Object.entries(staff)) {
+    const profile = person.attendance
+    if (!profile || person.archived) continue
+
+    for (let offset = -days; offset <= 0; offset += 1) {
+      const dow = dayKey(offset)
+      const windows = windowsFor(person.workingSchedule, dow)
+      const override = profile.overrides?.[offset]
+      const base = { businessId: company.id, staffId: person.id, date: localMidnight(offset) }
+
+      if (profile.type === 'on-leave') {
+        if (windows.length) rows.push({ ...base, status: 'LEAVE' })
+        continue
+      }
+      if (!windows.length) {
+        rows.push({ ...base, status: 'OFF' })
+        continue
+      }
+      if (override === 'LEAVE' || override === 'ABSENT') {
+        rows.push({ ...base, status: override })
+        continue
+      }
+
+      const first = windows[0]
+      const last = windows[windows.length - 1]
+      if (offset === 0 && now < first.startTime) continue // shift hasn't started yet
+
+      const r = noise(`${key}:${offset}`)
+      let inShift = -Math.round(r * 10) // 0..10 min early: on time
+      let outShift = Math.round(r * 12) // 0..12 min after shift end
+      if (profile.type === 'late-prone' && r < 0.45) inShift = 8 + Math.round(r * 40)
+      if (profile.type === 'leaves-early' && r > 0.5) outShift = -(15 + Math.round(r * 50))
+      if (profile.type === 'irregular') {
+        if (r < 0.15) {
+          rows.push({ ...base, status: 'ABSENT' })
+          continue
+        }
+        if (r > 0.7) inShift = 5 + Math.round(r * 30)
+        if (r < 0.3) outShift = -(10 + Math.round(r * 60))
+      }
+
+      const checkIn = localAt(offset, first.startTime, inShift)
+      const shiftOver = offset < 0 || now > last.endTime
+      const checkOut = override === 'NO_CHECKOUT' || !shiftOver ? null : localAt(offset, last.endTime, outShift)
+      rows.push({ ...base, status: 'PRESENT', checkIn, checkOut, ...computeLateEarly({ checkIn, checkOut, dayWindows: windows }) })
+    }
+  }
+
+  await prisma.attendanceRecord.createMany({ data: rows })
+  return rows.length
+}
+
+/** Rough status so the list looks right before FastAPI's first recompute (it re-derives on read). */
+function initialAssignmentStatus(a) {
+  if (a.status === 'CANCELLED') return 'CANCELLED'
+  if (a.endOffset != null && a.endOffset < 0) return 'COMPLETED'
+  if (a.startOffset > 0) return 'UPCOMING'
+  const now = nowHHMM()
+  const today = dayKey(0)
+  const live = a.windows.some((w) => (w.day === 'TODAY' ? today : w.day) === today && w.start <= now && now <= w.end)
+  return live ? 'ACTIVE' : 'UPCOMING'
+}
+
+async function createAssignments(company, staff, directory) {
+  for (const a of company.assignments ?? []) {
+    // A one-off ("NONE") assignment runs on its start date, so its window day is derived from it.
+    const windows = a.windows.map((w) => ({
+      dayOfWeek: w.day === 'TODAY' || a.repeatPattern === 'NONE' ? dayKey(a.startOffset) : w.day,
+      startTime: w.start,
+      endTime: w.end,
+    }))
+    await prisma.assignment.create({
+      data: {
+        businessId: company.id,
+        staffId: staff[a.staff].id,
+        workspaceId: a.workspace ? directory.workspaces[a.workspace].id : null,
+        resourceId: a.resource ? directory.resources[a.resource].id : null,
+        repeatPattern: a.repeatPattern,
+        repeatInterval: a.repeatInterval ?? null,
+        startDate: calendarDate(a.startOffset),
+        endDate: a.endOffset == null ? null : calendarDate(a.endOffset),
+        note: a.note ?? null,
+        status: initialAssignmentStatus(a),
+        timeWindows: { create: windows },
+      },
+    })
+  }
+}
+
+async function seedCompany(company, passwordHash) {
+  await prisma.business.deleteMany({ where: { id: company.id } })
+  await createBusiness(company)
+  await createAccounts(company, passwordHash)
+  const staff = await createStaff(company)
+  const directory = await createResourceDirectory(company, staff)
+  await createRecruitments(company, staff)
+  const attendanceRows = await createAttendance(company, staff)
+  await createAssignments(company, staff, directory)
+
+  return {
+    name: company.name,
+    accounts: company.accounts.length,
+    staff: Object.keys(staff).length,
+    workspaces: Object.keys(directory.workspaces).length,
+    resources: Object.keys(directory.resources).length,
+    recruitments: company.recruitments?.length ?? 0,
+    attendanceRows,
+    assignments: company.assignments?.length ?? 0,
+    owner: company.accounts.find((a) => a.role === 'OWNER')?.email,
+  }
 }
 
 async function main() {
-  const passwordHash = await bcrypt.hash('password123', 10)
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10)
 
-  await prisma.business.upsert({
-    where: { id: BUSINESS_ID },
-    update: {},
-    create: {
-      id: BUSINESS_ID,
-      name: 'Demo Business',
-      verificationLevel: 'ENHANCED',
-      recruitmentModelType: 'BOTH',
-      flags: {
-        create: {
-          staffDirectory: true,
-          staffRecruitment: true,
-          staffAttendance: true,
-          resourceDirectory: true,
-          operationalScheduling: true,
-          operationalSchedulingPremium: true,
-        },
-      },
-    },
-  })
+  // Older builds seeded a single placeholder business; drop it so it doesn't linger.
+  await prisma.business.deleteMany({ where: { id: { in: LEGACY_BUSINESS_IDS } } })
 
-  await prisma.account.upsert({
-    where: { email: 'owner@demo.test' },
-    update: {},
-    create: { businessId: BUSINESS_ID, email: 'owner@demo.test', passwordHash, role: 'OWNER' },
-  })
+  const summaries = []
+  for (const company of COMPANIES) summaries.push(await seedCompany(company, passwordHash))
 
-  await resetDemoData()
-
-  const staff = await seedStaff()
-  const resources = await seedResourceDirectory(staff)
-  await seedRecruitment(staff)
-  await seedAttendance(staff)
-  await seedScheduling(staff, resources)
-
-  console.log('Seeded demo business with a full presentation dataset:')
-  console.log('  - 10 staff (mixed statuses, schedules, responsibilities)')
-  console.log('  - 3 workspaces, 11 resources')
-  console.log('  - 4 recruitments with interview rounds and candidates')
-  console.log('  - 15 days of attendance history')
-  console.log('  - 6 operational scheduling assignments (active/upcoming/completed)')
-  console.log('  Login: owner@demo.test / password123')
+  console.table(
+    summaries.map(({ owner, ...s }) => s),
+    ['name', 'accounts', 'staff', 'workspaces', 'resources', 'recruitments', 'attendanceRows', 'assignments'],
+  )
+  console.log(`\nAll accounts use the password: ${SEED_PASSWORD}`)
+  for (const s of summaries) console.log(`  ${s.name.padEnd(28)} owner → ${s.owner}`)
+  console.log('\nFull account list: docs/seed-data.md')
 }
 
 main()

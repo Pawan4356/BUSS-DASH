@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { PersonCell, StatusBadge, SummaryStats, TableSkeleton } from '../../shared/components'
+import { DatePicker, PersonCell, ScrollArea, StatusBadge, SummaryStats, TableSkeleton, Tabs } from '../../shared/components'
 import { ASSIGNMENT_STATUS } from '../../shared/ui-tags'
 import { dayKey } from '../../shared/time'
 import { useGetSchedulingListQuery, useGetSchedulingSummaryQuery, useGetSchedulingTrendQuery } from './api'
@@ -42,18 +42,18 @@ export function SchedulingSummary() {
             <h2 className="section-title">Assignments</h2>
             <span>{date === today() ? 'Today' : new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</span>
           </div>
-          <div className="card">
+          <ScrollArea className="card" maxHeight={420}>
             <AssignmentsList items={list ? flattenAssignments(list) : null} date={date} />
-          </div>
+          </ScrollArea>
         </section>
         <section>
           <div className="section-head">
             <h2 className="section-title">Workload</h2>
             <span>Assigned hours per person</span>
           </div>
-          <div className="card">
+          <ScrollArea className="card" maxHeight={420}>
             <WorkloadBars staff={data.breakdown.staff} />
-          </div>
+          </ScrollArea>
         </section>
       </div>
 
@@ -66,46 +66,7 @@ export function SchedulingSummary() {
         </>
       )}
 
-      <div className="cluster" style={{ justifyContent: 'space-between' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>
-          Breakdown for
-        </h2>
-        <input type="date" className="input" style={{ maxWidth: 170 }} value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
-
-      <BreakdownTable
-        title="Staff"
-        rows={data.breakdown.staff}
-        columns={[
-          ['name', 'Name'],
-          ['assignedHours', 'Assigned Hrs'],
-          ['idleHours', 'Idle Hrs'],
-          ['utilizationPct', 'Utilization %'],
-          ['overtimeHours', 'Overtime Hrs'],
-        ]}
-      />
-      <BreakdownTable
-        title="Workspaces"
-        rows={data.breakdown.workspaces}
-        columns={[
-          ['name', 'Name'],
-          ['occupiedHours', 'Occupied Hrs'],
-          ['freeHours', 'Free Hrs'],
-          ['utilizationPct', 'Utilization %'],
-          ['usageCount', 'Usage Count'],
-        ]}
-      />
-      <BreakdownTable
-        title="Resources"
-        rows={data.breakdown.resources}
-        columns={[
-          ['name', 'Name'],
-          ['usageHours', 'Usage Hrs'],
-          ['downtimeHours', 'Downtime Hrs'],
-          ['maintenanceHours', 'Maintenance Hrs'],
-          ['utilizationPct', 'Utilization %'],
-        ]}
-      />
+      <Breakdown breakdown={data.breakdown} date={date} onDateChange={setDate} />
 
       {trend && (
         <>
@@ -121,32 +82,123 @@ export function SchedulingSummary() {
   )
 }
 
-function BreakdownTable({ title, rows, columns }) {
-  if (rows.length === 0) return null
+const BREAKDOWN_VIEWS = {
+  staff: {
+    label: 'Staff',
+    empty: 'No staff scheduled for this day.',
+    columns: [
+      ['assignedHours', 'Assigned Hrs'],
+      ['idleHours', 'Idle Hrs'],
+      ['overtimeHours', 'Overtime Hrs'],
+    ],
+  },
+  workspaces: {
+    label: 'Workspaces',
+    empty: 'No workspaces in use for this day.',
+    columns: [
+      ['occupiedHours', 'Occupied Hrs'],
+      ['freeHours', 'Free Hrs'],
+      ['usageCount', 'Usage Count'],
+    ],
+  },
+  resources: {
+    label: 'Resources',
+    empty: 'No resources in use for this day.',
+    columns: [
+      ['usageHours', 'Usage Hrs'],
+      ['downtimeHours', 'Downtime Hrs'],
+      ['maintenanceHours', 'Maintenance Hrs'],
+    ],
+  },
+}
+
+const COLLAPSED_ROWS = 8
+
+/** Staff / Workspaces / Resources utilization in one card — one table at a time, busiest first. */
+function Breakdown({ breakdown, date, onDateChange }) {
+  const [view, setView] = useState('staff')
+  const [expanded, setExpanded] = useState(false)
+  const { columns, empty } = BREAKDOWN_VIEWS[view]
+  const rows = [...breakdown[view]].sort((a, b) => b.utilizationPct - a.utilizationPct)
+  const visible = expanded ? rows : rows.slice(0, COLLAPSED_ROWS)
+
+  function switchView(next) {
+    setView(next)
+    setExpanded(false)
+  }
+
   return (
-    <>
-      <h2 className="section-title">{title}</h2>
-      <div className="table-wrap card" style={{ marginBottom: 24 }}>
-        <table className="table">
-          <thead>
-            <tr>
-              {columns.map(([key, label]) => (
-                <th key={key}>{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i}>
-                {columns.map(([key]) => (
-                  <td key={key}>{row[key]}</td>
+    <section>
+      <div className="breakdown-head">
+        <h2 className="section-title">Breakdown</h2>
+        <Tabs
+          ariaLabel="Breakdown by"
+          value={view}
+          onChange={switchView}
+          options={Object.entries(BREAKDOWN_VIEWS).map(([value, v]) => ({
+            value,
+            label: v.label,
+            count: breakdown[value].length,
+          }))}
+        />
+        <div className="toolbar-spacer" />
+        <DatePicker value={date} onChange={onDateChange} ariaLabel="Date" />
+      </div>
+
+      <div className="table-wrap card breakdown-card">
+        {rows.length === 0 ? (
+          <p className="none" style={{ padding: 16, margin: 0 }}>
+            {empty}
+          </p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Utilization</th>
+                {columns.map(([key, label]) => (
+                  <th key={key} className="num">
+                    {label}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visible.map((row, i) => (
+                <tr key={i}>
+                  <td>{row.name ?? 'Unnamed'}</td>
+                  <td>
+                    <UtilizationBar pct={row.utilizationPct} />
+                  </td>
+                  {columns.map(([key]) => (
+                    <td key={key} className="num">
+                      {row[key]}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {rows.length > COLLAPSED_ROWS && (
+          <button type="button" className="breakdown-more" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Show less' : `Show all ${rows.length}`}
+          </button>
+        )}
       </div>
-    </>
+    </section>
+  )
+}
+
+function UtilizationBar({ pct }) {
+  const clamped = Math.max(0, Math.min(100, pct ?? 0))
+  return (
+    <div className="util" title={`${pct}% utilized`}>
+      <div className="util-track">
+        <i style={{ width: `${clamped}%` }} />
+      </div>
+      <span>{pct}%</span>
+    </div>
   )
 }
 

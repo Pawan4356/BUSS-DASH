@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { EmptyState, PersonCell, StatusBadge, TableSkeleton, Tabs, useToast } from '../../shared/components'
+import { DatePicker, EmptyState, PersonCell, StatusBadge, TableSkeleton, Tabs, useToast } from '../../shared/components'
 import { ASSIGNMENT_STATUS } from '../../shared/ui-tags'
 import { useCancelAssignmentMutation, useGetSchedulingListQuery } from './api'
 import { AssignModal } from './AssignModal'
@@ -37,7 +37,7 @@ export function SchedulingList() {
               : []),
           ]}
         />
-        <input type="date" className="input" style={{ maxWidth: 170 }} value={date} onChange={(e) => setDate(e.target.value)} />
+        <DatePicker value={date} onChange={setDate} ariaLabel="Date" />
       </div>
 
       {tab === 'workspace' && (

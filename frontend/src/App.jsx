@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Routes, Route, Outlet } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
@@ -6,10 +6,11 @@ import { RequireAuth } from './app/RequireAuth'
 import { RequireModule } from './app/RequireModule'
 import { Layout } from './app/Layout'
 import { LoginPage } from './app/LoginPage'
-import { DashboardHome } from './app/DashboardHome'
+import { ProfilePage } from './app/ProfilePage'
 import { selectIsAuthenticated, sessionEstablished } from './app/authSlice'
 import { useGetMeQuery } from './api/authApi'
 import { FLAGS } from './shared/flags'
+import { NotFound } from './shared/components'
 import { staffDirectoryRoutes } from './modules/staff-directory/routes'
 import { resourceDirectoryRoutes } from './modules/resource-directory/routes'
 import { staffAttendanceRoutes } from './modules/staff-attendance/routes'
@@ -42,7 +43,8 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<DashboardHome />} />
+          <Route index element={<Navigate to="/staff-directory" replace />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route
             path="staff-directory/*"
             element={
@@ -52,6 +54,7 @@ export default function App() {
             }
           >
             {staffDirectoryRoutes}
+            <Route path="*" element={<NotFound />} />
           </Route>
           <Route
             path="resource-directory/*"
@@ -62,6 +65,7 @@ export default function App() {
             }
           >
             {resourceDirectoryRoutes}
+            <Route path="*" element={<NotFound />} />
           </Route>
           <Route
             path="staff-attendance/*"
@@ -72,6 +76,7 @@ export default function App() {
             }
           >
             {staffAttendanceRoutes}
+            <Route path="*" element={<NotFound />} />
           </Route>
           <Route
             path="staff-recruitment/*"
@@ -82,6 +87,7 @@ export default function App() {
             }
           >
             {staffRecruitmentRoutes}
+            <Route path="*" element={<NotFound />} />
           </Route>
           <Route
             path="operational-scheduling/*"
@@ -92,9 +98,10 @@ export default function App() {
             }
           >
             {operationalSchedulingRoutes}
+            <Route path="*" element={<NotFound />} />
           </Route>
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </SessionBootstrap>
   )

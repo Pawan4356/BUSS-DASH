@@ -50,6 +50,9 @@
   --accent-hover: var(--blue-strong);
   --accent-contrast: var(--gray-0);
 
+  /* Edge shadow on scrollable boxes: dark in light mode, a light glow in dark mode. */
+  --scroll-shadow: color-mix(in srgb, var(--gray-900) 40%, transparent);
+
   --sidebar-bg: var(--gray-800);
   --sidebar-hover: var(--gray-700);
 
@@ -87,6 +90,7 @@
     --surface: var(--gray-800);
     --border: var(--gray-700);
     --text: var(--gray-50);
+    --scroll-shadow: color-mix(in srgb, var(--gray-0) 34%, transparent);
     --text-muted: var(--gray-300);
     --text-faint: var(--gray-400);
     --accent-hover: #3d97e0;
@@ -106,6 +110,7 @@
   --surface: var(--gray-800);
   --border: var(--gray-700);
   --text: var(--gray-50);
+  --scroll-shadow: color-mix(in srgb, var(--gray-0) 34%, transparent);
   --text-muted: var(--gray-300);
   --text-faint: var(--gray-400);
   --accent-hover: #3d97e0;
@@ -214,36 +219,97 @@ textarea {
 
 .sidebar-business {
   padding: 16px var(--space-2) 6px;
-  font-size: 12px;
-  color: var(--text-muted);
 }
 
 .sidebar-business strong {
   display: block;
   color: var(--text);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.brand-logo,
-.brand-name {
+/* Brass wave under the company name, echoing the logo accent. The wave is a
+   repeating SVG mask so it can take its colour from --logo-accent. */
+.sidebar-business strong::after {
+  content: '';
   display: block;
-  height: auto;
-  object-fit: contain;
+  width: 40px;
+  height: 6px;
+  margin-top: 6px;
+  background: var(--logo-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 3 Q3 0.5 6 3 T12 3' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 12px 6px repeat-x;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 3 Q3 0.5 6 3 T12 3' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 12px 6px repeat-x;
+  animation: business-wave 1.6s linear infinite;
 }
 
-.brand-logo {
-  width: 46px;
+@keyframes business-wave {
+  to {
+    -webkit-mask-position: 12px 0;
+    mask-position: 12px 0;
+  }
 }
 
-.brand-name {
-  width: 130px;
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-business strong::after {
+    animation: none;
+  }
 }
 
-/* Dark artwork on the always-dark sidebar. */
-.brand-logo,
-.brand-name {
-  filter: invert(1) brightness(0.92);
+.brand {
+  color: var(--text);
+}
+
+/* PARSOR logo. Colours follow currentColor; the brass accent is --logo-accent. */
+:root {
+  --logo-accent: #b9862b;
+}
+:root[data-theme='dark'],
+.app-sidebar {
+  --logo-accent: #c9973a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --logo-accent: #c9973a;
+  }
+}
+
+/* --logo-size is the font size of the wordmark. */
+.parsor-logo {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--logo-size, 28px);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* Door p: drawn in 1/100 em units, baseline at y=0, descender to y=24. */
+.parsor-p {
+  flex: none;
+  width: 0.56em;
+  height: 0.74em;
+  transform: translateY(0.24em);
+  margin-right: -0.01em;
+}
+
+/* Clock o: outer ring matches the 0.44em width of DM Sans "o". */
+.parsor-clock {
+  flex: none;
+  width: 0.54em;
+  height: 0.54em;
+  transform: translateY(0.036em);
+  margin: 0 -0.01em 0 0.005em;
+}
+
+.parsor-mark {
+  flex: none;
+  display: block;
 }
 
 .nav-list {
@@ -1095,6 +1161,44 @@ input[type='radio'] {
 
 .workspace-name {
   font: 600 16px/1.3 var(--font-sans);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Workspace cards: as many ~240px columns as fit, one column on phones. */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-3);
+}
+
+.workspace-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.workspace-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.workspace-card-head .kebab {
+  flex-shrink: 0;
+  margin: -4px -6px 0 0;
+}
+
+.workspace-card-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.workspace-card-foot {
+  margin-top: auto;
 }
 
 /* Modals */
@@ -1720,4 +1824,489 @@ input[type='radio'] {
   width: 28px;
   height: 28px;
   font-size: 12px;
+}
+
+/* Date picker — field looks like an input; the calendar is our own popover. */
+
+.datepicker-field {
+  /* Sized to its content in toolbars; form fields stretch it via .field. */
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 170px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.datepicker-field:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+.datepicker-field.is-open {
+  border-color: var(--ocean);
+  box-shadow: 0 0 0 3px var(--ocean-tint);
+}
+
+.datepicker-field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.datepicker-field svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.datepicker-placeholder {
+  color: var(--text-faint);
+}
+
+.datepicker-pop {
+  position: fixed;
+  z-index: 200;
+  width: 292px;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgb(20 24 30 / 0.06),
+    0 14px 36px rgb(20 24 30 / 0.18);
+  animation: menu-in 120ms ease-out;
+}
+
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.dp-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Clickable header title: zooms the calendar out (days → months → years). */
+.dp-title-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dp-title-btn:hover {
+  background: var(--ocean-tint);
+  color: var(--ocean-ink);
+}
+
+.dp-title-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.7;
+}
+
+.dp-nav {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dp-nav:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.dp-nav svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dp-weekdays,
+.dp-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dp-weekdays span {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+  padding: 4px 0;
+}
+
+.dp-months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.dp-grid:focus-visible {
+  outline: none;
+}
+
+.dp-cell {
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+/* Taller cells so the month/year grids roughly match the day grid's height
+   and the popover doesn't jump when switching views. */
+.dp-months .dp-cell {
+  height: 58px;
+}
+
+.dp-cell:hover:not(:disabled) {
+  background: var(--ocean-tint);
+  color: var(--ocean-ink);
+}
+
+.dp-cell.is-outside {
+  color: var(--text-faint);
+}
+
+.dp-cell.is-today {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--ocean);
+}
+
+/* Keyboard cursor shows only while the grid itself has focus. */
+.dp-grid:focus-visible .dp-cell.is-cursor {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.dp-cell.is-selected,
+.dp-cell.is-selected:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.dp-cell:disabled {
+  color: var(--text-faint);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dp-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.dp-link {
+  border: 0;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dp-link:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.dp-link.is-accent {
+  color: var(--ocean-ink);
+}
+
+.dp-link:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Native time inputs keep their picker; just quiet the icon to match. */
+input[type='time']::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+input[type='time']::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.9;
+}
+
+.field > .datepicker-field {
+  width: 100%;
+}
+
+/* ───────── Account profile & avatars ───────── */
+
+.avatar-media {
+  overflow: hidden;
+  background: none;
+}
+
+.avatar-media svg,
+.avatar-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -6px 0 -6px -6px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+.account-link:hover,
+.account-link.is-active {
+  background: var(--sidebar-hover);
+}
+
+.profile-page {
+  max-width: 960px;
+}
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.profile-card {
+  padding: 20px;
+}
+
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 12px;
+  max-width: 560px;
+}
+
+.avatar-option {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  background: none;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.avatar-option svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-option:hover {
+  transform: scale(1.06);
+}
+
+.avatar-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+/* ───────── 404 ───────── */
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.not-found-code {
+  font: 400 clamp(72px, 14vw, 128px)/1 var(--font-serif);
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.not-found-title {
+  margin-top: var(--space-3);
+}
+
+.not-found-text {
+  max-width: 420px;
+  margin: var(--space-2) 0 var(--space-5);
+  color: var(--text-muted);
+}
+
+.not-found-actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.not-found-actions .btn {
+  text-decoration: none;
+}
+
+/* ───────── Scheduling summary: breakdown ───────── */
+
+/* Long lists inside the side-by-side summary cards scroll instead of
+   stretching the page. */
+/* Scroll shadows (see shared/components/ScrollArea). Scrollbars are hidden
+   app-wide, so a soft shadow on the top/bottom edge signals hidden content.
+   The shadows are overlays above the content (z-index 10), so hovered rows,
+   avatars and badges can't cover them; menus (20) and popups (100+) still
+   open above them. */
+.scroll-shadow {
+  position: relative;
+}
+
+.scroll-shadow::before,
+.scroll-shadow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  z-index: 10;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.scroll-shadow::before {
+  top: 0;
+  background: radial-gradient(farthest-side at 50% 0, var(--scroll-shadow), transparent);
+}
+
+.scroll-shadow::after {
+  bottom: 0;
+  background: radial-gradient(farthest-side at 50% 100%, var(--scroll-shadow), transparent);
+}
+
+.scroll-shadow[data-shadow-top]::before,
+.scroll-shadow[data-shadow-bottom]::after {
+  opacity: 1;
+}
+
+.scroll-shadow-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.breakdown-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 26px 0 12px;
+}
+
+.breakdown-head .section-title {
+  margin: 0;
+}
+
+.breakdown-card {
+  margin-bottom: 24px;
+}
+
+.table th.num,
+.table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.util {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.util-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+
+.util-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ocean);
+}
+
+.util span {
+  width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.breakdown-more {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  border-top: 1px solid var(--border-soft);
+  background: none;
+  color: var(--accent);
+  font: 600 13px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.breakdown-more:hover {
+  background: color-mix(in srgb, var(--bg) 60%, var(--surface));
 }

@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useLoginMutation } from '../api/authApi'
 import { sessionEstablished } from './authSlice'
-import { useToast } from '../shared/components'
+import { ParsorLogo, useToast } from '../shared/components'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -19,7 +19,7 @@ export function LoginPage() {
     try {
       const result = await login({ email, password }).unwrap()
       dispatch(sessionEstablished(result))
-      push(`Welcome back, ${result.account.email}`)
+      push(`Welcome back, ${result.profile?.firstName ?? result.account.email}`)
       navigate(location.state?.from?.pathname ?? '/', { replace: true })
     } catch {
       // surfaced via `error` below
@@ -37,6 +37,9 @@ export function LoginPage() {
       }}
     >
       <form className="card" style={{ padding: 32, width: 360 }} onSubmit={handleSubmit}>
+        <div style={{ marginBottom: 24 }}>
+          <ParsorLogo size={32} />
+        </div>
         <h1 className="page-title" style={{ fontSize: 28, marginBottom: 20 }}>
           Sign in to PARSOR
         </h1>

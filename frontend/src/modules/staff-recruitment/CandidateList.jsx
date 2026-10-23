@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { DetailHeader, EmptyState, KebabMenu, PersonCell, StatusBadge, TableSkeleton, Tabs } from '../../shared/components'
+import { DetailHeader, EmptyState, KebabMenu, NotFound, PersonCell, StatusBadge, TableSkeleton, Tabs } from '../../shared/components'
 import { CANDIDATE_STATUS } from '../../shared/ui-tags'
 import { useGetRecruitmentQuery, useListCandidatesQuery } from './api'
 import { AddCandidateModal } from './AddCandidateModal'
@@ -10,7 +10,7 @@ export function CandidateList() {
   const { recruitmentId } = useParams()
   const navigate = useNavigate()
   const business = useSelector((s) => s.auth.business)
-  const { data: recruitment } = useGetRecruitmentQuery(recruitmentId)
+  const { data: recruitment, error: loadError } = useGetRecruitmentQuery(recruitmentId)
   const [adding, setAdding] = useState(false)
 
   const audience = recruitment?.audience ?? (business.recruitmentModelType === 'BOTH' ? null : business.recruitmentModelType)
@@ -27,6 +27,16 @@ export function CandidateList() {
     { skip: !tab },
   )
 
+  if (loadError?.status === 404) {
+    return (
+      <NotFound
+        title="Recruitment not found"
+        description="This job opening may have been deleted, or the link is incorrect."
+        backTo="/staff-recruitment/candidates"
+        backLabel="Back to Candidates"
+      />
+    )
+  }
   if (!recruitment || !tab) return <TableSkeleton />
 
   return (

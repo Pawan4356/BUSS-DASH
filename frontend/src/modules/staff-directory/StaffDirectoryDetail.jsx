@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
+  DatePicker,
   DetailHeader,
+  NotFound,
   TableSkeleton,
   TimeWindowPicker,
   useToast,
@@ -50,7 +52,7 @@ export function StaffDirectoryDetail() {
   const { push } = useToast()
   const flags = useSelector((s) => s.auth.flags)
 
-  const { data: staff, isLoading } = useGetStaffQuery(id)
+  const { data: staff, isLoading, error: loadError } = useGetStaffQuery(id)
   const [updateStaff, { isLoading: saving }] = useUpdateStaffMutation()
   const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
   const [form, setForm] = useState(null)
@@ -62,6 +64,16 @@ export function StaffDirectoryDetail() {
     if (staff) setForm(buildForm(staff))
   }, [staff])
 
+  if (loadError?.status === 404) {
+    return (
+      <NotFound
+        title="Staff member not found"
+        description="This person may have been removed from the directory, or the link is incorrect."
+        backTo="/staff-directory"
+        backLabel="Back to Staff Directory"
+      />
+    )
+  }
   if (isLoading || !form) return <TableSkeleton rows={6} cols={2} />
 
   function set(key, value) {
@@ -229,7 +241,11 @@ function TextField({ label, mode, value, onChange, type = 'text' }) {
     <div className="field">
       <span className="field-label">{label}</span>
       {mode === 'edit' ? (
-        <input className="input" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+        type === 'date' ? (
+          <DatePicker value={value} onChange={onChange} clearable ariaLabel={label} />
+        ) : (
+          <input className="input" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+        )
       ) : (
         <div className="field-static">{value || '—'}</div>
       )}

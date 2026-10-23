@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { DetailHeader, TableSkeleton, useToast } from '../../shared/components'
+import { DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
 import { BUSINESS_STATUS, OPERATIONAL_STATUS, RESOURCE_BEHAVIOR, toOptions } from '../../shared/ui-tags'
 import { useGetResourceQuery, useListWorkspacesQuery, useUpdateResourceMutation } from './api'
 
@@ -19,7 +19,7 @@ export function ResourceDetail() {
   const { id } = useParams()
   const location = useLocation()
   const flags = useSelector((s) => s.auth.flags)
-  const { data: resource, isLoading } = useGetResourceQuery(id)
+  const { data: resource, isLoading, error: loadError } = useGetResourceQuery(id)
   const { data: workspaces } = useListWorkspacesQuery()
   const [updateResource, { isLoading: saving }] = useUpdateResourceMutation()
   const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
@@ -30,6 +30,16 @@ export function ResourceDetail() {
     if (resource) setForm(buildForm(resource))
   }, [resource])
 
+  if (loadError?.status === 404) {
+    return (
+      <NotFound
+        title="Resource not found"
+        description="This resource may have been deleted, or the link is incorrect."
+        backTo="/resource-directory"
+        backLabel="Back to Resource Directory"
+      />
+    )
+  }
   if (isLoading || !form) return <TableSkeleton rows={4} cols={2} />
 
   function set(key, value) {

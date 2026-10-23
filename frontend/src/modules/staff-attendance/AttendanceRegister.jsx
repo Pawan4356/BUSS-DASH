@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  DatePicker,
   EmptyState,
   KebabMenu,
   PersonCell,
@@ -53,7 +54,7 @@ export function AttendanceRegister() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Staff Attendance</h1>
-        <input type="date" className="input" style={{ maxWidth: 170 }} value={date} onChange={(e) => setDate(e.target.value)} />
+        <DatePicker value={date} onChange={setDate} ariaLabel="Date" />
       </div>
 
       <SummaryStats

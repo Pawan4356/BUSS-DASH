@@ -24,6 +24,7 @@ export const baseApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: [
     'Business',
+    'Profile',
     'Staff',
     'Recruitment',
     'Candidate',

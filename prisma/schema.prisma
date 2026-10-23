@@ -81,6 +81,18 @@ model Account {
   passwordHash String
   role         AccountRole
   createdAt    DateTime    @default(now())
+
+  // Profile — general, business-agnostic details shown on /profile.
+  firstName  String?
+  lastName   String?
+  jobTitle   String?
+  department String?
+  phone      String?
+  location   String?
+  timezone   String?
+  /// "preset:<key>" for a built-in avatar, or a data:image/* URL for an
+  /// uploaded photo (resized client-side). Null falls back to initials.
+  avatar     String?
 }
 
 // ─────────────────────────────────────────────────────────────────────────

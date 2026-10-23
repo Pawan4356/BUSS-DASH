@@ -1,4 +1,5 @@
 import { REPEAT_PATTERN } from '../ui-tags'
+import { DatePicker } from './DatePicker'
 
 /**
  * Repeat pattern (spec §4): Do not repeat / Repeat weekly / Custom (interval
@@ -49,20 +50,22 @@ export function RepeatPatternPicker({ value, onChange }) {
           </div>
           <div className="field">
             <span className="field-label">Start date</span>
-            <input
-              type="date"
-              className="input"
+            <DatePicker
               value={value.startDate ?? ''}
-              onChange={(e) => set({ startDate: e.target.value })}
+              onChange={(v) => set({ startDate: v })}
+              max={value.endDate || undefined}
+              ariaLabel="Start date"
             />
           </div>
           <div className="field">
             <span className="field-label">End date</span>
-            <input
-              type="date"
-              className="input"
+            <DatePicker
               value={value.endDate ?? ''}
-              onChange={(e) => set({ endDate: e.target.value })}
+              onChange={(v) => set({ endDate: v })}
+              min={value.startDate || undefined}
+              clearable
+              placeholder="No end date"
+              ariaLabel="End date"
             />
           </div>
         </div>

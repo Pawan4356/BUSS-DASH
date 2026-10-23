@@ -2,6 +2,7 @@ import './lib/loadEnv.js'
 import express from 'express'
 import cors from 'cors'
 import { authRouter } from './routes/auth.js'
+import { profileRouter } from './routes/profile.js'
 import { staffDirectoryRouter } from './routes/staffDirectory.js'
 import { staffRecruitmentRouter } from './routes/staffRecruitment.js'
 import { staffAttendanceRouter } from './routes/staffAttendance.js'
@@ -10,11 +11,13 @@ import { resourceDirectoryRouter } from './routes/resourceDirectory.js'
 const app = express()
 
 app.use(cors())
-app.use(express.json())
+// 1 MB leaves room for an uploaded avatar (data URL) on PATCH /profile.
+app.use(express.json({ limit: '1mb' }))
 
 app.get('/health', (req, res) => res.json({ ok: true }))
 
 app.use('/auth', authRouter)
+app.use('/profile', profileRouter)
 app.use('/staff-directory', staffDirectoryRouter)
 app.use('/staff-recruitment', staffRecruitmentRouter)
 app.use('/staff-attendance', staffAttendanceRouter)

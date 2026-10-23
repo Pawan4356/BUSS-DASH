@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { DetailHeader, EmptyState, StatusBadge, TableSkeleton } from '../../shared/components'
+import { DatePicker, DetailHeader, EmptyState, NotFound, StatusBadge, TableSkeleton } from '../../shared/components'
 import { ATTENDANCE_STATUS } from '../../shared/ui-tags'
 import { useGetAttendanceHistoryQuery } from './api'
 import { isoToTimeInput } from './timeAdapters'
@@ -12,14 +12,25 @@ function currentMonth() {
 export function AttendanceHistory() {
   const { staffId } = useParams()
   const [month, setMonth] = useState(currentMonth())
-  const { data: records, isLoading } = useGetAttendanceHistoryQuery({ staffId, month })
+  const { data: records, isLoading, error: loadError } = useGetAttendanceHistoryQuery({ staffId, month })
+
+  if (loadError?.status === 404) {
+    return (
+      <NotFound
+        title="Staff member not found"
+        description="There’s no attendance history for this person — they may have been removed."
+        backTo="/staff-attendance"
+        backLabel="Back to Staff Attendance"
+      />
+    )
+  }
 
   return (
     <div>
       <DetailHeader backTo="/staff-attendance" backLabel="Staff Attendance" title="Attendance History" mode="view" />
 
       <div className="toolbar">
-        <input type="month" className="input" style={{ maxWidth: 170 }} value={month} onChange={(e) => setMonth(e.target.value)} />
+        <DatePicker mode="month" value={month} onChange={setMonth} ariaLabel="Month" />
       </div>
 
       {isLoading ? (

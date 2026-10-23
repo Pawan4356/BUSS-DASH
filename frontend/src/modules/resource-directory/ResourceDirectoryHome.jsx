@@ -93,10 +93,10 @@ function WorkspacesTab() {
       ) : workspaces.length === 0 ? (
         <EmptyState title="No workspaces yet" description="Add your first workspace to get started." />
       ) : (
-        <div className="summary-grid">
+        <div className="workspace-grid">
           {workspaces.map((w) => (
-            <div key={w.id} className="card stat-tile">
-              <div className="cluster" style={{ justifyContent: 'space-between' }}>
+            <div key={w.id} className="card workspace-card">
+              <div className="workspace-card-head">
                 <button type="button" className="row-link workspace-name" onClick={() => navigate(`workspaces/${w.id}`)}>
                   {w.name}
                 </button>
@@ -108,10 +108,10 @@ function WorkspacesTab() {
                   ]}
                 />
               </div>
-              <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+              <div className="workspace-card-meta">
                 {w.subSpaceCount} sub-spaces · {w.resourceCount} resources
               </div>
-              <div style={{ marginTop: 8 }}>
+              <div className="workspace-card-foot">
                 <StatusBadge value={w.businessStatus} label={BUSINESS_STATUS[w.businessStatus]} />
               </div>
             </div>

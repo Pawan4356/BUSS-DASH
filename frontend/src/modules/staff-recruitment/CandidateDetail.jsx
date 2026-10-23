@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ConfirmDialog, DetailHeader, TableSkeleton, useToast } from '../../shared/components'
+import { ConfirmDialog, DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
 import { useGetCandidateQuery, useHireCandidateMutation, useUpdateCandidateMutation } from './api'
 
 const EDITABLE_FIELDS = ['name', 'email', 'phone', 'qualifications', 'experience', 'coverNote', 'portfolio']
@@ -15,7 +15,7 @@ export function CandidateDetail() {
   const navigate = useNavigate()
   const { push } = useToast()
 
-  const { data: candidate, isLoading } = useGetCandidateQuery(candidateId)
+  const { data: candidate, isLoading, error: loadError } = useGetCandidateQuery(candidateId)
   const [updateCandidate, { isLoading: saving }] = useUpdateCandidateMutation()
   const [hireCandidate, { isLoading: hiring }] = useHireCandidateMutation()
   const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
@@ -26,6 +26,16 @@ export function CandidateDetail() {
     if (candidate) setForm(buildForm(candidate))
   }, [candidate])
 
+  if (loadError?.status === 404) {
+    return (
+      <NotFound
+        title="Candidate not found"
+        description="This candidate may have been removed, or the link is incorrect."
+        backTo="/staff-recruitment/candidates"
+        backLabel="Back to Candidates"
+      />
+    )
+  }
   if (isLoading || !form) return <TableSkeleton rows={4} cols={2} />
 
   const editable = candidate.source === 'WALK_IN'

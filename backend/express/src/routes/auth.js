@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '../lib/prisma.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
+import { serializeProfile } from '../lib/profileHelpers.js'
 
 export const authRouter = Router()
 
@@ -27,6 +28,7 @@ authRouter.post(
     res.json({
       token,
       account: { id: account.id, email: account.email, role: account.role },
+      profile: serializeProfile(account),
       business: {
         id: account.business.id,
         name: account.business.name,
@@ -48,6 +50,7 @@ authRouter.get(
     })
     res.json({
       account: { id: req.account.id, email: req.account.email, role: req.account.role },
+      profile: serializeProfile(req.account),
       business: {
         id: business.id,
         name: business.name,

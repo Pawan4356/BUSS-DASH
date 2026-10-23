@@ -1,0 +1,50 @@
+/* PARSOR logo styles. Add to theme.css (or import next to ParsorLogo.jsx).
+
+   index.html <head> needs the wordmark font:
+   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@700&display=swap" rel="stylesheet">
+*/
+
+:root {
+  --logo-accent: #B9862B;            /* brass on light backgrounds */
+}
+:root[data-theme="dark"],
+.app-sidebar {                        /* sidebar is always dark */
+  --logo-accent: #C9973A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --logo-accent: #C9973A; }
+}
+
+/* --logo-size is the font size of the wordmark. */
+.parsor-logo {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--logo-size, 28px);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* Door p: drawn in 1/100 em units, baseline at y=0, descender to y=24. */
+.parsor-p {
+  flex: none;
+  width: 0.56em;
+  height: 0.74em;
+  transform: translateY(0.24em);
+  margin-right: -0.01em;
+}
+
+/* Clock o: outer ring matches the 0.44em width of DM Sans "o". */
+.parsor-clock {
+  flex: none;
+  width: 0.54em;
+  height: 0.54em;
+  transform: translateY(0.036em);
+  margin: 0 -0.01em 0 0.005em;
+}
+
+.parsor-mark {
+  flex: none;
+  display: block;
+}

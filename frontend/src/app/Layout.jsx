@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useEffect, useState } from 'react'
 import { FLAGS, MODULES, resolveModuleAccess } from '../shared/flags'
 import { loggedOut } from './authSlice'
+import { Avatar, ConfirmDialog, ParsorLogo } from '../shared/components'
 
 function getInitialTheme() {
   const savedTheme = window.localStorage.getItem('theme')
@@ -65,8 +66,12 @@ function ModuleIcon({ moduleKey }) {
   )
 }
 
-function formatRole(role) {
-  return role ? role.charAt(0) + role.slice(1).toLowerCase() : null
+export function formatRole(role) {
+  if (!role) return null
+  return role
+    .split('_')
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function LogoutIcon() {
@@ -83,7 +88,9 @@ export function Layout() {
   const flags = useSelector((s) => s.auth.flags)
   const business = useSelector((s) => s.auth.business)
   const account = useSelector((s) => s.auth.account)
+  const profile = useSelector((s) => s.auth.profile)
   const [theme, setTheme] = useState(getInitialTheme)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -95,13 +102,12 @@ export function Layout() {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <div className="brand" aria-label="PARSOR">
-          <img className="brand-logo" src="/LOGO.png" alt="" />
-          <img className="brand-name" src="/PARSOR.png" alt="PARSOR" />
+        <div className="brand">
+          <ParsorLogo size={40} />
         </div>
         {business?.name && (
           <div className="sidebar-business">
-            <strong>{business.name}</strong>
+            <strong title={business.name}>{business.name}</strong>
           </div>
         )}
         <ul className="nav-list">
@@ -130,10 +136,17 @@ export function Layout() {
         </ul>
         <div style={{ flex: 1 }} />
         <div className="account-bar">
-          <div className="account-email" title={account?.email}>
-            {account?.email}
-            {account?.role && <span>{formatRole(account.role)}</span>}
-          </div>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => `account-link${isActive ? ' is-active' : ''}`}
+            title="View your profile"
+          >
+            <Avatar avatar={profile?.avatar} name={profile?.displayName ?? account?.email} size={32} />
+            <span className="account-email">
+              {profile?.displayName ?? account?.email}
+              {account?.role && <span>{formatRole(account.role)}</span>}
+            </span>
+          </NavLink>
           <div className="account-actions">
             <button
               type="button"
@@ -147,7 +160,7 @@ export function Layout() {
             <button
               type="button"
               className="btn btn-icon"
-              onClick={() => dispatch(loggedOut())}
+              onClick={() => setLogoutConfirmOpen(true)}
               aria-label="Log out"
               title="Log out"
             >
@@ -159,6 +172,17 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Log out?"
+        description="Are you sure you want to log out?"
+        confirmLabel="Log out"
+        onConfirm={() => {
+          dispatch(loggedOut())
+          setLogoutConfirmOpen(false)
+        }}
+        onCancel={() => setLogoutConfirmOpen(false)}
+      />
     </div>
   )
 }

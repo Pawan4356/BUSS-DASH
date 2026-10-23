@@ -57,7 +57,7 @@ sudo -u postgres psql -c "CREATE DATABASE bussdash OWNER bussdash;"
 cp .env.example .env
 # edit .env: DATABASE_URL="postgresql://bussdash:bussdash@localhost:5432/bussdash"
 
-# 4. Create the schema and load demo data
+# 4. Create the schema and load seed data
 npm run prisma:migrate
 npm run --workspace backend/express seed
 
@@ -67,14 +67,18 @@ npm run dev:fastapi    # http://localhost:8000
 npm run dev:frontend   # http://localhost:5173
 ```
 
-Open `http://localhost:5173` and sign in with `owner@demo.test` / `password123`.
+Open `http://localhost:5173` and sign in with `kavita.raman@meridianhealth.in` /
+`Parsor@2026` (owner of the fully unlocked tenant).
 
-The seed script (`backend/express/src/seed.js`) loads a full presentation
-dataset — 10 staff across every status, 3 workspaces, 11 resources, 4
-recruitments in every stage with candidates and interview rounds, 15 days of
-attendance history, and a mix of active/upcoming/completed scheduling
-assignments. It's idempotent — re-run it any time to reset to a clean demo
-state.
+The seed script (`backend/express/src/seed.js`, data in `backend/express/src/seed-data/`)
+loads four companies that between them cover every module state and entitlement rule:
+**Meridian Health Clinic** (everything unlocked), **Bluepeak Logistics** (no premium
+scheduling, internal-only hiring), **Saffron Table Café** (recruitment and scheduling
+locked by verification / prerequisites) and **Lumen Design Studio** (nothing purchased).
+It's idempotent and date-relative — re-run it any time for a fresh dataset.
+Every account, role and the use-case each record covers is listed in
+[`docs/seed-data.md`](./docs/seed-data.md), which also documents the account profile
+and avatar feature (`/profile`).
 
 See `docs/setup.md` for troubleshooting notes (shadow-database permissions,
 why `.env` lives at the repo root, etc.) and `docs/decisions.md` for the

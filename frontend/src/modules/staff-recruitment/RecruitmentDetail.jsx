@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { DetailHeader, TableSkeleton, useToast } from '../../shared/components'
+import { DatePicker, DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
 import { INTERVIEW_STATUS, INTERVIEW_TYPE, RECRUITMENT_AUDIENCE, toOptions } from '../../shared/ui-tags'
 import { useGetRecruitmentQuery, useLaunchRecruitmentMutation, useUpdateRecruitmentMutation } from './api'
 import { useListStaffQuery } from '../staff-directory/api'
@@ -29,7 +29,7 @@ export function RecruitmentDetail() {
   const business = useSelector((s) => s.auth.business)
   const flags = useSelector((s) => s.auth.flags)
 
-  const { data: recruitment, isLoading } = useGetRecruitmentQuery(id)
+  const { data: recruitment, isLoading, error: loadError } = useGetRecruitmentQuery(id)
   const { data: staffList } = useListStaffQuery({ archived: false }, { skip: !flags?.staffDirectory })
   const [updateRecruitment, { isLoading: saving }] = useUpdateRecruitmentMutation()
   const [launchRecruitment] = useLaunchRecruitmentMutation()
@@ -40,6 +40,16 @@ export function RecruitmentDetail() {
     if (recruitment) setForm(buildForm(recruitment))
   }, [recruitment])
 
+  if (loadError?.status === 404) {
+    return (
+      <NotFound
+        title="Recruitment not found"
+        description="This job opening may have been deleted, or the link is incorrect."
+        backTo="/staff-recruitment"
+        backLabel="Back to Recruitment"
+      />
+    )
+  }
   if (isLoading || !form) return <TableSkeleton rows={6} cols={2} />
 
   function set(key, value) {
@@ -256,7 +266,11 @@ function TextField({ label, mode, value, onChange, type = 'text' }) {
     <div className="field">
       <span className="field-label">{label}</span>
       {mode === 'edit' ? (
-        <input className="input" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+        type === 'date' ? (
+          <DatePicker value={value} onChange={onChange} clearable ariaLabel={label} />
+        ) : (
+          <input className="input" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+        )
       ) : (
         <div className="field-static">{value || '—'}</div>
       )}
