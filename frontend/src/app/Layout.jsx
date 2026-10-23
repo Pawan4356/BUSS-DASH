@@ -1,9 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { FLAGS, MODULES, resolveModuleAccess } from '../shared/flags'
 import { loggedOut } from './authSlice'
-import { Avatar, ConfirmDialog, ParsorLogo } from '../shared/components'
+import { Avatar, ConfirmDialog, ParsorLogo, useSlidingIndicator } from '../shared/components'
 
 function getInitialTheme() {
   const savedTheme = window.localStorage.getItem('theme')
@@ -91,13 +92,39 @@ export function Layout() {
   const profile = useSelector((s) => s.auth.profile)
   const [theme, setTheme] = useState(getInitialTheme)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const navRef = useSlidingIndicator('.nav-link.is-active')
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     window.localStorage.setItem('theme', theme)
   }, [theme])
 
-  const toggleTheme = () => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))
+  // The new theme spreads out as a circle from the toggle button, using the
+  // View Transitions API. Browsers without it (or with reduced motion) just swap.
+  const toggleTheme = (event) => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!document.startViewTransition || reduceMotion) {
+      setTheme(nextTheme)
+      return
+    }
+
+    const { left, top, width, height } = event.currentTarget.getBoundingClientRect()
+    const x = left + width / 2
+    const y = top + height / 2
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+
+    const transition = document.startViewTransition(() => {
+      flushSync(() => setTheme(nextTheme))
+      document.documentElement.dataset.theme = nextTheme
+    })
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration: 450, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', pseudoElement: '::view-transition-new(root)' },
+      )
+    })
+  }
 
   return (
     <div className="app-shell">
@@ -110,7 +137,8 @@ export function Layout() {
             <strong title={business.name}>{business.name}</strong>
           </div>
         )}
-        <ul className="nav-list">
+        <ul className="nav-list" ref={navRef}>
+          <li className="slide-indicator" aria-hidden="true" />
           {MODULES.map((module) => {
             const access = resolveModuleAccess(module.key, { flags, business })
             return (
