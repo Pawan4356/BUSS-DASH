@@ -3,11 +3,12 @@ import { prisma } from '../lib/prisma.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requireFlag } from '../middleware/requireFlag.js'
+import { requireManagerForWrites } from '../middleware/requireRole.js'
 import { FLAGS } from '../lib/entitlements.js'
 import { STAFF_DETAIL_INCLUDE, serializeStaffDetail, serializeStaffListItem } from '../lib/staffHelpers.js'
 
 export const staffDirectoryRouter = Router()
-staffDirectoryRouter.use(requireAuth, requireFlag(FLAGS.STAFF_DIRECTORY))
+staffDirectoryRouter.use(requireAuth, requireFlag(FLAGS.STAFF_DIRECTORY), requireManagerForWrites(FLAGS.STAFF_DIRECTORY))
 
 staffDirectoryRouter.get(
   '/summary',

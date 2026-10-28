@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
+  Avatar,
   DatePicker,
   DetailHeader,
   NotFound,
+  StatusBadge,
   TableSkeleton,
   TimeWindowPicker,
   useToast,
@@ -15,6 +17,8 @@ import {
   STAFF_STATUS,
   toOptions,
 } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetStaffQuery, useUpdateStaffMutation } from './api'
 import { scheduleFromApi, scheduleToApi } from './scheduleAdapters'
 import { useListResourcesQuery, useListWorkspacesQuery } from '../resource-directory/api'
@@ -51,10 +55,11 @@ export function StaffDirectoryDetail() {
   const location = useLocation()
   const { push } = useToast()
   const flags = useSelector((s) => s.auth.flags)
+  const canManage = useCanManage(FLAGS.STAFF_DIRECTORY)
 
   const { data: staff, isLoading, error: loadError } = useGetStaffQuery(id)
   const [updateStaff, { isLoading: saving }] = useUpdateStaffMutation()
-  const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
+  const [mode, setMode] = useState(canManage && location.state?.startInEdit ? 'edit' : 'view')
   const [form, setForm] = useState(null)
 
   const { data: workspaces } = useListWorkspacesQuery(undefined, { skip: !flags?.resourceDirectory })
@@ -109,129 +114,167 @@ export function StaffDirectoryDetail() {
         backTo="/staff-directory"
         backLabel="Staff Directory"
         title={name}
-        subtitle={staff.accountId ? `Account ID: ${staff.accountId}` : 'Pending invitation'}
+        leading={<Avatar name={name} size={52} />}
+        subtitle={
+          <span className="detail-meta">
+            <span>{staff.accountId ?? 'Pending invitation'}</span>
+            {staff.title && (
+              <>
+                <span className="dot" />
+                <span>{staff.title}</span>
+              </>
+            )}
+            <StatusBadge value={staff.status} label={STAFF_STATUS[staff.status]} />
+          </span>
+        }
         mode={mode}
-        onEdit={() => setMode('edit')}
+        onEdit={canManage ? () => setMode('edit') : undefined}
         onSave={handleSave}
         onCancel={handleCancel}
         saving={saving}
       />
 
-      <h2 className="section-title">General</h2>
-      <div className="field-grid">
-        <TextField label="First Name" mode={mode} value={form.firstName} onChange={(v) => set('firstName', v)} />
-        <TextField label="Last Name" mode={mode} value={form.lastName} onChange={(v) => set('lastName', v)} />
-        <TextField label="Phone Number" mode={mode} value={form.phoneNumber} onChange={(v) => set('phoneNumber', v)} />
-        <TextField label="Gender" mode={mode} value={form.gender} onChange={(v) => set('gender', v)} />
-        <TextField label="Date of Birth" mode={mode} type="date" value={form.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} />
-      </div>
-
-      <h2 className="section-title">Professional</h2>
-      <div className="field-grid">
-        <div className="field">
-          <span className="field-label">Account ID</span>
-          <div className="field-static">{staff.accountId ?? '—'}</div>
-        </div>
-        <TextField label="Title" mode={mode} value={form.title} onChange={(v) => set('title', v)} />
-        <TextField label="Date of Joining" mode={mode} type="date" value={form.dateOfJoining} onChange={(v) => set('dateOfJoining', v)} />
-        <TextField
-          label="Years of Experience"
-          mode={mode}
-          type="number"
-          value={form.yearsOfExperience}
-          onChange={(v) => set('yearsOfExperience', v)}
-        />
-        <div className="field">
-          <span className="field-label">Employment Type</span>
-          {mode === 'edit' ? (
-            <>
-              <input
-                className="input"
-                list="employment-type-presets"
-                value={form.employmentType}
-                onChange={(e) => set('employmentType', e.target.value)}
-              />
-              <datalist id="employment-type-presets">
-                {EMPLOYMENT_TYPE_PRESETS.map((preset) => (
-                  <option key={preset} value={preset} />
-                ))}
-              </datalist>
-            </>
-          ) : (
-            <div className="field-static">{form.employmentType || '—'}</div>
-          )}
-        </div>
-        <div className="field">
-          <span className="field-label">Status</span>
-          {mode === 'edit' ? (
-            <select className="select" value={form.status} onChange={(e) => set('status', e.target.value)}>
-              {toOptions(STAFF_STATUS).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="field-static">{STAFF_STATUS[form.status]}</div>
-          )}
-        </div>
-        <div className="field">
-          <span className="field-label">Responsibilities</span>
-          <div className="field-static">{staff.responsibilitiesCount}</div>
-        </div>
-      </div>
-      <TextArea label="Qualifications" mode={mode} value={form.qualifications} onChange={(v) => set('qualifications', v)} />
-      <TextArea label="Past Experience" mode={mode} value={form.pastExperience} onChange={(v) => set('pastExperience', v)} />
-
-      <h2 className="section-title">Working Schedule</h2>
-      {mode === 'edit' ? (
-        <TimeWindowPicker value={form.workingSchedule} onChange={(v) => set('workingSchedule', v)} />
-      ) : (
-        <ScheduleSummary schedule={form.workingSchedule} />
-      )}
-
-      {flags?.resourceDirectory && (
-        <>
-          <h2 className="section-title">Workspace Responsibility</h2>
-          <ChecklistField
-            mode={mode}
-            options={workspaces ?? []}
-            selected={form.workspaceIds}
-            onChange={(v) => set('workspaceIds', v)}
-            emptyLabel="No workspaces yet"
-          />
-
-          <h2 className="section-title">Resources Responsibility</h2>
-          <ChecklistField
-            mode={mode}
-            options={resources ?? []}
-            selected={form.resourceIds}
-            onChange={(v) => set('resourceIds', v)}
-            emptyLabel="No resources yet"
-          />
-        </>
-      )}
-
-      {availableResponsibilities.length > 0 && (
-        <>
-          <h2 className="section-title">Work Responsibility</h2>
-          <div className="stack">
-            {availableResponsibilities.map((key) => (
-              <label key={key} className="cluster" style={{ fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  disabled={mode !== 'edit'}
-                  checked={form.workResponsibility[key]}
-                  onChange={(e) =>
-                    set('workResponsibility', { ...form.workResponsibility, [key]: e.target.checked })
-                  }
-                />
-                {WORK_RESPONSIBILITY_LABELS[key]}
-              </label>
-            ))}
+      <div className="detail-columns">
+        <section className="detail-card">
+          <CardHead title="General" />
+          <div className="field-grid">
+            <TextField label="First Name" mode={mode} value={form.firstName} onChange={(v) => set('firstName', v)} />
+            <TextField label="Last Name" mode={mode} value={form.lastName} onChange={(v) => set('lastName', v)} />
+            <TextField label="Phone Number" mode={mode} value={form.phoneNumber} onChange={(v) => set('phoneNumber', v)} />
+            <TextField label="Gender" mode={mode} value={form.gender} onChange={(v) => set('gender', v)} />
+            <TextField label="Date of Birth" mode={mode} type="date" value={form.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} />
           </div>
-        </>
+        </section>
+
+        <section className="detail-card">
+          <CardHead title="Professional" />
+          <div className="field-grid">
+            <TextField label="Title" mode={mode} value={form.title} onChange={(v) => set('title', v)} />
+            <TextField label="Date of Joining" mode={mode} type="date" value={form.dateOfJoining} onChange={(v) => set('dateOfJoining', v)} />
+            <TextField
+              label="Years of Experience"
+              mode={mode}
+              type="number"
+              value={form.yearsOfExperience}
+              onChange={(v) => set('yearsOfExperience', v)}
+            />
+            <div className="field">
+              <span className="field-label">Employment Type</span>
+              {mode === 'edit' ? (
+                <>
+                  <input
+                    className="input"
+                    list="employment-type-presets"
+                    value={form.employmentType}
+                    onChange={(e) => set('employmentType', e.target.value)}
+                  />
+                  <datalist id="employment-type-presets">
+                    {EMPLOYMENT_TYPE_PRESETS.map((preset) => (
+                      <option key={preset} value={preset} />
+                    ))}
+                  </datalist>
+                </>
+              ) : (
+                <div className="field-static">{form.employmentType || '—'}</div>
+              )}
+            </div>
+            <div className="field">
+              <span className="field-label">Status</span>
+              {mode === 'edit' ? (
+                <select className="select" value={form.status} onChange={(e) => set('status', e.target.value)}>
+                  {toOptions(STAFF_STATUS).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="field-static">
+                  <StatusBadge value={form.status} label={STAFF_STATUS[form.status]} />
+                </div>
+              )}
+            </div>
+            <div className="field">
+              <span className="field-label">Responsibilities</span>
+              <div className="field-static">{staff.responsibilitiesCount}</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="detail-card">
+        <CardHead title="Background" />
+        <div className="field-grid is-wide">
+          <TextArea label="Qualifications" mode={mode} value={form.qualifications} onChange={(v) => set('qualifications', v)} />
+          <TextArea label="Past Experience" mode={mode} value={form.pastExperience} onChange={(v) => set('pastExperience', v)} />
+        </div>
+      </section>
+
+      <section className="detail-card">
+        <CardHead title="Working Schedule" />
+        {mode === 'edit' ? (
+          <TimeWindowPicker value={form.workingSchedule} onChange={(v) => set('workingSchedule', v)} />
+        ) : (
+          <WeekView schedule={form.workingSchedule} />
+        )}
+      </section>
+
+      {(flags?.resourceDirectory || availableResponsibilities.length > 0) && (
+        <section className="detail-card">
+          <CardHead title="Responsibilities" />
+          <div className={`detail-groups${mode === 'edit' ? ' is-editing' : ''}`}>
+            {availableResponsibilities.length > 0 && (
+              <div>
+                <h3 className="detail-sub">Work</h3>
+                <ChecklistField
+                  mode={mode}
+                  options={availableResponsibilities.map((key) => ({ id: key, name: WORK_RESPONSIBILITY_LABELS[key] }))}
+                  selected={availableResponsibilities.filter((key) => form.workResponsibility[key])}
+                  onChange={(keys) =>
+                    set('workResponsibility', {
+                      ...form.workResponsibility,
+                      ...Object.fromEntries(availableResponsibilities.map((k) => [k, keys.includes(k)])),
+                    })
+                  }
+                  emptyLabel="None"
+                />
+              </div>
+            )}
+            {flags?.resourceDirectory && (
+              <>
+                <div>
+                  <h3 className="detail-sub">Workspaces</h3>
+                  <ChecklistField
+                    mode={mode}
+                    options={workspaces ?? []}
+                    selected={form.workspaceIds}
+                    onChange={(v) => set('workspaceIds', v)}
+                    emptyLabel="No workspaces yet"
+                  />
+                </div>
+                <div>
+                  <h3 className="detail-sub">Resources</h3>
+                  <ChecklistField
+                    mode={mode}
+                    options={resources ?? []}
+                    selected={form.resourceIds}
+                    onChange={(v) => set('resourceIds', v)}
+                    emptyLabel="No resources yet"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </section>
       )}
+    </div>
+  )
+}
+
+function CardHead({ title }) {
+  return (
+    <div className="detail-card-head">
+      <h2 className="section-title">{title}</h2>
     </div>
   )
 }
@@ -260,41 +303,51 @@ function TextArea({ label, mode, value, onChange }) {
       {mode === 'edit' ? (
         <textarea className="textarea" value={value} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <div className="field-static">{value || '—'}</div>
+        <div className="field-static is-prose">{value || '—'}</div>
       )}
     </div>
   )
 }
 
-function ScheduleSummary({ schedule }) {
+function WeekView({ schedule }) {
   return (
-    <div className="stack">
-      {Object.entries(schedule).map(([day, value]) => (
-        <div key={day} className="cluster">
-          <strong style={{ width: 90 }}>{DAY_OF_WEEK_SHORT[day]}</strong>
-          <span className="text-muted">
-            {value.isOff
-              ? 'Off'
-              : value.windows.length === 0
-                ? 'No windows set'
-                : value.windows.map((w) => `${w.start}–${w.end}`).join(', ')}
-          </span>
-        </div>
-      ))}
+    <div className="week-view">
+      {Object.entries(schedule).map(([day, value]) => {
+        const working = !value.isOff && value.windows.length > 0
+        return (
+          <div key={day} className={`week-day${working ? ' is-working' : ''}`}>
+            <b>{DAY_OF_WEEK_SHORT[day]}</b>
+            {working ? (
+              value.windows.map((w, i) => <span key={i}>{`${w.start}–${w.end}`}</span>)
+            ) : (
+              <span>{value.isOff ? 'Off' : '—'}</span>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 function ChecklistField({ mode, options, selected, onChange, emptyLabel }) {
-  if (options.length === 0) return <p className="text-muted">{emptyLabel}</p>
+  if (options.length === 0) return <p className="detail-empty">{emptyLabel}</p>
   if (mode !== 'edit') {
-    const names = options.filter((o) => selected.includes(o.id)).map((o) => o.name)
-    return <p className="text-muted">{names.length > 0 ? names.join(', ') : 'None assigned'}</p>
+    const picked = options.filter((o) => selected.includes(o.id))
+    if (picked.length === 0) return <p className="detail-empty">None assigned</p>
+    return (
+      <div className="chips">
+        {picked.map((o) => (
+          <span className="chip" key={o.id}>
+            {o.name}
+          </span>
+        ))}
+      </div>
+    )
   }
   return (
-    <div className="stack">
+    <div className="check-grid">
       {options.map((o) => (
-        <label key={o.id} className="cluster" style={{ fontSize: 13 }}>
+        <label key={o.id} className="check-tile">
           <input
             type="checkbox"
             checked={selected.includes(o.id)}

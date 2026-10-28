@@ -215,7 +215,7 @@ def get_list(
 @router.post("/assignments", status_code=status.HTTP_201_CREATED)
 def create_assignment(
     body: AssignmentCreate,
-    ctx: SchedulingContext = Depends(require_scheduling_access()),
+    ctx: SchedulingContext = Depends(require_scheduling_access(manage=True)),
     db: Session = Depends(get_db),
 ):
     conflicts = svc.find_conflicts(
@@ -270,7 +270,7 @@ def create_assignment(
 @router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_assignment(
     assignment_id: str,
-    ctx: SchedulingContext = Depends(require_scheduling_access()),
+    ctx: SchedulingContext = Depends(require_scheduling_access(manage=True)),
     db: Session = Depends(get_db),
 ):
     assignment = db.get(Assignment, assignment_id)

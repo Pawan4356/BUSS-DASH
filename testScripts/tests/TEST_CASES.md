@@ -4,7 +4,7 @@ Regenerate with `npm run test:cases --workspace backend/express`.
 
 Result column: PASS = behaviour matches expectation. XFAIL = known defect, test asserts the correct behaviour and is expected to fail until the code is fixed.
 
-Total test cases: **325**
+Total test cases: **376**
 
 
 ## Black-box tests
@@ -104,53 +104,59 @@ Total test cases: **325**
 | 4 | BB-ATT  Register  GET /register TC-T04 search by first/last name (case-insensitive) | PASS |
 | 5 | BB-ATT  Register  GET /register TC-T05 filter by status | PASS |
 | 6 | BB-ATT  Register  GET /register TC-T06 archived staff are not listed | PASS |
-| 7 | BB-ATT  Register  GET /register TC-T07 other businesses' staff are never listed | PASS |
-| 8 | BB-ATT  Register  GET /register TC-T40 register row shows job title and the late / early flags of the stored record | PASS |
-| 9 | BB-ATT  Register  GET /register TC-T41 staff without a job title -> title null (not undefined / missing) | PASS |
-| 10 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T08 check-in creates a record, default status PRESENT, stay time not yet known | PASS |
-| 11 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T09 check-out after check-in calculates stay time (Practical-10 example: 09:15 -> 18:05 = 8.83 h) | PASS |
-| 12 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T10 check-in and check-out in one request | PASS |
-| 13 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T11 marking the same staff+date twice updates ONE record (no duplicates) | PASS |
-| 14 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T12 BVA stay time: check-out == check-in -> 0 minutes | PASS |
-| 15 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T13 BVA stay time: 1 minute | PASS |
-| 16 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T14 check-out BEFORE check-in never produces a negative stay time | PASS |
-| 17 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T15 stay time is rounded to whole minutes | PASS |
-| 18 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T16 unknown staff -> 404 | PASS |
-| 19 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T17 staff of another business -> 404 | PASS |
-| 20 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T18 records for different dates are independent | PASS |
-| 21 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status PRESENT | PASS |
-| 22 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status ABSENT | PASS |
-| 23 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status LEAVE | PASS |
-| 24 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status OFF | PASS |
-| 25 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T20 status can be corrected afterwards | PASS |
-| 26 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T21 an explicit status is kept when times are added later | PASS |
-| 27 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 08:59 -> lateCheckIn=false | PASS |
-| 28 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:00 -> lateCheckIn=false | PASS |
-| 29 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:01 -> lateCheckIn=true | PASS |
-| 30 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:15 -> lateCheckIn=true | PASS |
-| 31 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 16:59 -> earlyCheckOut=true | PASS |
-| 32 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:00 -> earlyCheckOut=false | PASS |
-| 33 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:01 -> earlyCheckOut=false | PASS |
-| 34 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 12:00 -> earlyCheckOut=true | PASS |
-| 35 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T24 staff with NO schedule for that day is never late / early | PASS |
-| 36 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T25 a day marked OFF has no working window -> not late / early | PASS |
-| 37 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T26 late AND early in the same request | PASS |
-| 38 | BB-ATT  Today's summary  GET /summary TC-T27 staff with no record today count as ABSENT | PASS |
-| 39 | BB-ATT  Today's summary  GET /summary TC-T28 counts every status and late / early totals | PASS |
-| 40 | BB-ATT  Today's summary  GET /summary TC-T29 archived staff are excluded from the summary | PASS |
-| 41 | BB-ATT  Today's summary  GET /summary TC-T30 summary is scoped to the caller's business | PASS |
-| 42 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T31 returns the month's records in ascending date order with stay time | PASS |
-| 43 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T32 BVA month edges: 1st and last day included, previous / next month excluded | PASS |
-| 44 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T33 month with no records -> empty array | PASS |
-| 45 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T34 no month given -> defaults to the current month (200) | PASS |
-| 46 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T35 unknown staff -> 404 | PASS |
-| 47 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T36 history of another business's staff -> 404 | PASS |
-| 48 | BB-ATT  Access control TC-T37 get /summary without token -> 401 | PASS |
-| 49 | BB-ATT  Access control TC-T37 get /register without token -> 401 | PASS |
-| 50 | BB-ATT  Access control TC-T37 patch /register/x without token -> 401 | PASS |
-| 51 | BB-ATT  Access control TC-T37 get /staff/x/history without token -> 401 | PASS |
-| 52 | BB-ATT  Access control TC-T38 Staff Attendance not purchased -> 403 with reason | PASS |
-| 53 | BB-ATT  Access control TC-T39 buying ONLY Staff Directory does not unlock attendance | PASS |
+| 7 | BB-ATT  Register  GET /register TC-T42 pending invites (not yet onboarded) are not listed | PASS |
+| 8 | BB-ATT  Register  GET /register TC-T07 other businesses' staff are never listed | PASS |
+| 9 | BB-ATT  Register  GET /register TC-T40 register row shows job title and the late / early flags of the stored record | PASS |
+| 10 | BB-ATT  Register  GET /register TC-T41 staff without a job title -> title null (not undefined / missing) | PASS |
+| 11 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T08 check-in creates a record, default status PRESENT, stay time not yet known | PASS |
+| 12 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T09 check-out after check-in calculates stay time (Practical-10 example: 09:15 -> 18:05 = 8.83 h) | PASS |
+| 13 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T10 check-in and check-out in one request | PASS |
+| 14 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T11 marking the same staff+date twice updates ONE record (no duplicates) | PASS |
+| 15 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T12 BVA stay time: check-out == check-in -> 0 minutes | PASS |
+| 16 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T13 BVA stay time: 1 minute | PASS |
+| 17 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T14 check-out BEFORE check-in never produces a negative stay time | PASS |
+| 18 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T15 stay time is rounded to whole minutes | PASS |
+| 19 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T16 unknown staff -> 404 | PASS |
+| 20 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T17 staff of another business -> 404 | PASS |
+| 21 | BB-ATT  Check-in / check-out  PATCH /register/:staffId TC-T18 records for different dates are independent | PASS |
+| 22 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status PRESENT | PASS |
+| 23 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status ABSENT | PASS |
+| 24 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status LEAVE | PASS |
+| 25 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T19 manager can set status OFF | PASS |
+| 26 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T20 status can be corrected afterwards | PASS |
+| 27 | BB-ATT  Attendance status (Present / Absent / Leave / Off) TC-T21 an explicit status is kept when times are added later | PASS |
+| 28 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 08:59 -> lateCheckIn=false | PASS |
+| 29 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:00 -> lateCheckIn=false | PASS |
+| 30 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:01 -> lateCheckIn=true | PASS |
+| 31 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T22 check-in 09:15 -> lateCheckIn=true | PASS |
+| 32 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 16:59 -> earlyCheckOut=true | PASS |
+| 33 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:00 -> earlyCheckOut=false | PASS |
+| 34 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 17:01 -> earlyCheckOut=false | PASS |
+| 35 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T23 check-out 12:00 -> earlyCheckOut=true | PASS |
+| 36 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T24 staff with NO schedule for that day is never late / early | PASS |
+| 37 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T25 a day marked OFF has no working window -> not late / early | PASS |
+| 38 | BB-ATT  Late check-in / early check-out (BVA around schedule 09:00-17:00) TC-T26 late AND early in the same request | PASS |
+| 39 | BB-ATT  Today's summary  GET /summary TC-T27 staff with no record today count as ABSENT | PASS |
+| 40 | BB-ATT  Today's summary  GET /summary TC-T28 counts every status and late / early totals | PASS |
+| 41 | BB-ATT  Today's summary  GET /summary TC-T29 archived staff are excluded from the summary | PASS |
+| 42 | BB-ATT  Today's summary  GET /summary TC-T43 pending invites are excluded from the summary (not counted as absent) | PASS |
+| 43 | BB-ATT  Today's summary  GET /summary TC-T30 summary is scoped to the caller's business | PASS |
+| 44 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T31 returns the month's records in ascending date order with stay time | PASS |
+| 45 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T32 BVA month edges: 1st and last day included, previous / next month excluded | PASS |
+| 46 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T33 month with no records -> empty array | PASS |
+| 47 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T34 no month given -> defaults to the current month (200) | PASS |
+| 48 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T35 unknown staff -> 404 | PASS |
+| 49 | BB-ATT  Attendance history  GET /staff/:staffId/history TC-T36 history of another business's staff -> 404 | PASS |
+| 50 | BB-ATT  Months with records  GET /staff/:staffId/months TC-TM1 lists each month that has a record once, ascending | PASS |
+| 51 | BB-ATT  Months with records  GET /staff/:staffId/months TC-TM2 no records -> empty array | PASS |
+| 52 | BB-ATT  Months with records  GET /staff/:staffId/months TC-TM3 unknown staff -> 404 | PASS |
+| 53 | BB-ATT  Months with records  GET /staff/:staffId/months TC-TM4 another business's staff -> 404 | PASS |
+| 54 | BB-ATT  Access control TC-T37 get /summary without token -> 401 | PASS |
+| 55 | BB-ATT  Access control TC-T37 get /register without token -> 401 | PASS |
+| 56 | BB-ATT  Access control TC-T37 patch /register/x without token -> 401 | PASS |
+| 57 | BB-ATT  Access control TC-T37 get /staff/x/history without token -> 401 | PASS |
+| 58 | BB-ATT  Access control TC-T38 Staff Attendance not purchased -> 403 with reason | PASS |
+| 59 | BB-ATT  Access control TC-T39 buying ONLY Staff Directory does not unlock attendance | PASS |
 
 ### `tests/blackbox/staffDirectory.blackbox.test.js`
 
@@ -335,7 +341,7 @@ Total test cases: **325**
 | 22 | WB-PATH  PATCH /staff-attendance/register/:staffId update branch: `checkIn !== undefined` guard — omitted key keeps the stored value | PASS |
 | 23 | WB-PATH  PATCH /staff-attendance/register/:staffId update branch: explicit null clears a previously stored checkOut | PASS |
 | 24 | WB-PATH  PATCH /staff-attendance/register/:staffId update branch: explicit null clears a previously stored checkIn | PASS |
-| 25 | WB-PATH  PATCH /staff-attendance/register/:staffId register row: invited staff without a name -> name is null (\|\| null branch) | PASS |
+| 25 | WB-PATH  PATCH /staff-attendance/register/:staffId register row: staff without a name -> name is null (\|\| null branch) | PASS |
 | 26 | WB-PATH  PATCH /staff-attendance/register/:staffId update branch: falsy status is ignored (`...(status && {status})`) | PASS |
 | 27 | WB-PATH  PATCH /staff-attendance/register/:staffId record is always stored with the caller's businessId | PASS |
 | 28 | WB-PATH  PATCH /staff-attendance/register/:staffId schedule lookup uses ONLY isOff:false windows of that weekday, ordered by startTime | PASS |
@@ -344,6 +350,56 @@ Total test cases: **325**
 | 31 | WB-PATH  /profile handlers POST /password with no parsed body -> treated as {} -> 400 "required" | PASS |
 | 32 | WB-PATH  /profile handlers PATCH validation error returns BEFORE touching the database | PASS |
 | 33 | WB-PATH  /profile handlers POST /password with a wrong current password never writes | PASS |
+
+### `tests/whitebox/permissions.whitebox.test.js`
+
+| # | Test case | Result |
+|---|---|---|
+| 1 | WB-PERM  canManageModule — decision table OWNER on staffDirectory -> true | PASS |
+| 2 | WB-PERM  canManageModule — decision table STAFF_MANAGER on staffDirectory -> true | PASS |
+| 3 | WB-PERM  canManageModule — decision table RECRUITMENT_MANAGER on staffDirectory -> false | PASS |
+| 4 | WB-PERM  canManageModule — decision table ATTENDANCE_MANAGER on staffDirectory -> false | PASS |
+| 5 | WB-PERM  canManageModule — decision table RESOURCE_MANAGER on staffDirectory -> false | PASS |
+| 6 | WB-PERM  canManageModule — decision table OPERATIONS_MANAGER on staffDirectory -> false | PASS |
+| 7 | WB-PERM  canManageModule — decision table STAFF on staffDirectory -> false | PASS |
+| 8 | WB-PERM  canManageModule — decision table OWNER on staffRecruitment -> true | PASS |
+| 9 | WB-PERM  canManageModule — decision table STAFF_MANAGER on staffRecruitment -> false | PASS |
+| 10 | WB-PERM  canManageModule — decision table RECRUITMENT_MANAGER on staffRecruitment -> true | PASS |
+| 11 | WB-PERM  canManageModule — decision table ATTENDANCE_MANAGER on staffRecruitment -> false | PASS |
+| 12 | WB-PERM  canManageModule — decision table RESOURCE_MANAGER on staffRecruitment -> false | PASS |
+| 13 | WB-PERM  canManageModule — decision table OPERATIONS_MANAGER on staffRecruitment -> false | PASS |
+| 14 | WB-PERM  canManageModule — decision table STAFF on staffRecruitment -> false | PASS |
+| 15 | WB-PERM  canManageModule — decision table OWNER on staffAttendance -> true | PASS |
+| 16 | WB-PERM  canManageModule — decision table STAFF_MANAGER on staffAttendance -> false | PASS |
+| 17 | WB-PERM  canManageModule — decision table RECRUITMENT_MANAGER on staffAttendance -> false | PASS |
+| 18 | WB-PERM  canManageModule — decision table ATTENDANCE_MANAGER on staffAttendance -> true | PASS |
+| 19 | WB-PERM  canManageModule — decision table RESOURCE_MANAGER on staffAttendance -> false | PASS |
+| 20 | WB-PERM  canManageModule — decision table OPERATIONS_MANAGER on staffAttendance -> false | PASS |
+| 21 | WB-PERM  canManageModule — decision table STAFF on staffAttendance -> false | PASS |
+| 22 | WB-PERM  canManageModule — decision table OWNER on resourceDirectory -> true | PASS |
+| 23 | WB-PERM  canManageModule — decision table STAFF_MANAGER on resourceDirectory -> false | PASS |
+| 24 | WB-PERM  canManageModule — decision table RECRUITMENT_MANAGER on resourceDirectory -> false | PASS |
+| 25 | WB-PERM  canManageModule — decision table ATTENDANCE_MANAGER on resourceDirectory -> false | PASS |
+| 26 | WB-PERM  canManageModule — decision table RESOURCE_MANAGER on resourceDirectory -> true | PASS |
+| 27 | WB-PERM  canManageModule — decision table OPERATIONS_MANAGER on resourceDirectory -> false | PASS |
+| 28 | WB-PERM  canManageModule — decision table STAFF on resourceDirectory -> false | PASS |
+| 29 | WB-PERM  canManageModule — decision table OWNER on operationalScheduling -> true | PASS |
+| 30 | WB-PERM  canManageModule — decision table STAFF_MANAGER on operationalScheduling -> false | PASS |
+| 31 | WB-PERM  canManageModule — decision table RECRUITMENT_MANAGER on operationalScheduling -> false | PASS |
+| 32 | WB-PERM  canManageModule — decision table ATTENDANCE_MANAGER on operationalScheduling -> false | PASS |
+| 33 | WB-PERM  canManageModule — decision table RESOURCE_MANAGER on operationalScheduling -> false | PASS |
+| 34 | WB-PERM  canManageModule — decision table OPERATIONS_MANAGER on operationalScheduling -> true | PASS |
+| 35 | WB-PERM  canManageModule — decision table STAFF on operationalScheduling -> false | PASS |
+| 36 | WB-PERM  canManageModule — decision table unknown module or missing role -> false | PASS |
+| 37 | WB-PERM  canManageModule — decision table frontend copy matches the backend copy | PASS |
+| 38 | WB-PERM  requireManagerForWrites — every branch B1 read method passes for any role | PASS |
+| 39 | WB-PERM  requireManagerForWrites — every branch B2 write by a manager role passes | PASS |
+| 40 | WB-PERM  requireManagerForWrites — every branch B3 write by another role -> 403 insufficient-role, next NOT called | PASS |
+| 41 | WB-PERM  routes — reads open, writes gated STAFF can still read the directory and attendance register | PASS |
+| 42 | WB-PERM  routes — reads open, writes gated STAFF cannot invite, edit or delete staff | PASS |
+| 43 | WB-PERM  routes — reads open, writes gated a manager of another module cannot edit the directory | PASS |
+| 44 | WB-PERM  routes — reads open, writes gated STAFF_MANAGER can delete staff; ATTENDANCE_MANAGER can mark attendance | PASS |
+| 45 | WB-PERM  routes — reads open, writes gated STAFF_MANAGER cannot mark attendance | PASS |
 
 ### `tests/whitebox/profileHelpers.whitebox.test.js`
 

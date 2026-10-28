@@ -15,7 +15,8 @@ try {
   execFileSync(
     'npx',
     ['vitest', 'run', '--config', path.join(here, 'vitest.config.js'), '--reporter=json', `--outputFile=${jsonPath}`],
-    { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] },
+    // npx is npx.cmd on Windows, which needs a shell to run.
+    { cwd: root, stdio: ['ignore', 'ignore', 'inherit'], shell: process.platform === 'win32' },
   )
 } catch {
   // A failing run still writes the JSON; the FAIL rows make the problem visible.
@@ -31,7 +32,7 @@ const resultLabel = (file, status) => {
 }
 
 const files = results.testResults
-  .map((f) => ({ rel: path.relative(here, f.name), tests: f.assertionResults }))
+  .map((f) => ({ rel: path.relative(here, f.name).split(path.sep).join('/'), tests: f.assertionResults }))
   .sort((a, b) => a.rel.localeCompare(b.rel))
 
 const total = files.reduce((n, f) => n + f.tests.length, 0)

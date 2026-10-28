@@ -14,6 +14,8 @@ export function serializeRecruitmentListItem(recruitment) {
     status: recruitment.status,
     totalCandidates: recruitment.candidates.length,
     hired: recruitment.candidates.filter((c) => c.status === 'HIRED').length,
+    /** Candidates still waiting on a decision (applied or shortlisted). */
+    awaitingDecision: recruitment.candidates.filter((c) => c.status === 'APPLIED' || c.status === 'SHORTLISTED').length,
     numberOfOpenings: recruitment.numberOfOpenings,
     experienceRequired: recruitment.experienceRequired,
     audience: recruitment.audience,

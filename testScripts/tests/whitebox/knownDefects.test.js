@@ -76,18 +76,18 @@ describe('DEF  Staff Attendance', () => {
 })
 
 describe('DEF  Staff Directory / role & entitlement rules from the spec', () => {
-  it.fails('DEF-07 spec §5 "Holder role: Staff Manager" — an account with role STAFF must not be able to delete staff', async () => {
+  it('DEF-07 spec §5 "Holder role: Staff Manager" — an account with role STAFF must not be able to delete staff', async () => {
     seedAccount(fake.prisma, { id: 'accStaff', businessId: 'biz1', email: 'staff@demo.test', passwordHash: 'x', role: 'STAFF' })
     const s = seedStaff(fake.prisma, { firstName: 'Victim' })
     const res = await request(app).delete(`/staff-directory/staff/${s.id}`).set(bearer('accStaff'))
-    expect(res.status).toBe(403) // actual: 204
+    expect(res.status).toBe(403) // fixed: requireManagerForWrites
   })
 
-  it.fails('DEF-08 spec §7 "Holder role: Attendance Manager" — an account with role STAFF must not be able to edit attendance', async () => {
+  it('DEF-08 spec §7 "Holder role: Attendance Manager" — an account with role STAFF must not be able to edit attendance', async () => {
     seedAccount(fake.prisma, { id: 'accStaff', businessId: 'biz1', email: 'staff@demo.test', passwordHash: 'x', role: 'STAFF' })
     const s = seedStaff(fake.prisma, { firstName: 'Target' })
     const res = await request(app).patch(`/staff-attendance/register/${s.id}?date=${DATE}`).set(bearer('accStaff')).send({ status: 'ABSENT' })
-    expect(res.status).toBe(403) // actual: 200
+    expect(res.status).toBe(403) // fixed: requireManagerForWrites
   })
 
   it.fails('DEF-09 spec §5 Work-Responsibility checklist is subscription-gated — "Staff Recruitment" must not be assignable when staff_recruitment is not purchased', async () => {

@@ -10,8 +10,11 @@ import {
   TableSkeleton,
   Tabs,
   useToast,
+  rowClick,
 } from '../../shared/components'
 import { BUSINESS_STATUS, OPERATIONAL_STATUS } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import {
   useDeleteResourceMutation,
   useDeleteWorkspaceMutation,
@@ -67,6 +70,7 @@ function WorkspacesTab() {
   const [deleteWorkspace] = useDeleteWorkspaceMutation()
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.RESOURCE_DIRECTORY)
 
   async function confirmDelete() {
     try {
@@ -83,19 +87,21 @@ function WorkspacesTab() {
     <div>
       <div className="toolbar">
         <div className="toolbar-spacer" />
-        <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
-          + Add Workspace
-        </button>
+        {canManage && (
+          <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+            + Add Workspace
+          </button>
+        )}
       </div>
 
       {isLoading ? (
         <TableSkeleton />
       ) : workspaces.length === 0 ? (
-        <EmptyState title="No workspaces yet" description="Add your first workspace to get started." />
+        <EmptyState title="No workspaces yet" description={canManage ? 'Add your first workspace to get started.' : undefined} />
       ) : (
         <div className="workspace-grid">
           {workspaces.map((w) => (
-            <div key={w.id} className="card workspace-card">
+            <div key={w.id} className="card workspace-card is-clickable" onClick={rowClick(() => navigate(`workspaces/${w.id}`))}>
               <div className="workspace-card-head">
                 <button type="button" className="row-link workspace-name" onClick={() => navigate(`workspaces/${w.id}`)}>
                   {w.name}
@@ -103,8 +109,12 @@ function WorkspacesTab() {
                 <KebabMenu
                   items={[
                     { label: 'View details', onClick: () => navigate(`workspaces/${w.id}`) },
-                    { label: 'Edit', onClick: () => navigate(`workspaces/${w.id}`, { state: { startInEdit: true } }) },
-                    { label: 'Delete', danger: true, onClick: () => setPendingDelete(w) },
+                    ...(canManage
+                      ? [
+                          { label: 'Edit', onClick: () => navigate(`workspaces/${w.id}`, { state: { startInEdit: true } }) },
+                          { label: 'Delete', danger: true, onClick: () => setPendingDelete(w) },
+                        ]
+                      : []),
                   ]}
                 />
               </div>
@@ -142,6 +152,7 @@ function ResourcesTab() {
   const [deleteResource] = useDeleteResourceMutation()
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.RESOURCE_DIRECTORY)
 
   async function confirmDelete() {
     try {
@@ -165,15 +176,17 @@ function ResourcesTab() {
           <option value="recently-updated">Recently Updated</option>
         </select>
         <div className="toolbar-spacer" />
-        <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
-          + Add Resource
-        </button>
+        {canManage && (
+          <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+            + Add Resource
+          </button>
+        )}
       </div>
 
       {isLoading ? (
         <TableSkeleton />
       ) : resources.length === 0 ? (
-        <EmptyState title="No resources yet" description="Add your first resource to get started." />
+        <EmptyState title="No resources yet" description={canManage ? 'Add your first resource to get started.' : undefined} />
       ) : (
         <div className="table-wrap card">
           <table className="table">
@@ -190,7 +203,7 @@ function ResourcesTab() {
             </thead>
             <tbody>
               {resources.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className="is-clickable" onClick={rowClick(() => navigate(`resources/${r.id}`))}>
                   <td>
                     <button type="button" className="row-link" onClick={() => navigate(`resources/${r.id}`)}>
                       {r.name}
@@ -207,8 +220,12 @@ function ResourcesTab() {
                     <KebabMenu
                       items={[
                         { label: 'View details', onClick: () => navigate(`resources/${r.id}`) },
-                        { label: 'Edit', onClick: () => navigate(`resources/${r.id}`, { state: { startInEdit: true } }) },
-                        { label: 'Delete', danger: true, onClick: () => setPendingDelete(r) },
+                        ...(canManage
+                          ? [
+                              { label: 'Edit', onClick: () => navigate(`resources/${r.id}`, { state: { startInEdit: true } }) },
+                              { label: 'Delete', danger: true, onClick: () => setPendingDelete(r) },
+                            ]
+                          : []),
                       ]}
                     />
                   </td>

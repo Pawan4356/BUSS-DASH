@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requireFlag } from '../middleware/requireFlag.js'
+import { requireManagerForWrites } from '../middleware/requireRole.js'
 import { FLAGS } from '../lib/entitlements.js'
 import {
   RECRUITMENT_DETAIL_INCLUDE,
@@ -12,7 +13,7 @@ import {
 } from '../lib/recruitmentHelpers.js'
 
 export const staffRecruitmentRouter = Router()
-staffRecruitmentRouter.use(requireAuth, requireFlag(FLAGS.STAFF_RECRUITMENT))
+staffRecruitmentRouter.use(requireAuth, requireFlag(FLAGS.STAFF_RECRUITMENT), requireManagerForWrites(FLAGS.STAFF_RECRUITMENT))
 
 // "Offers Sent" has no dedicated candidate status in the spec's 4-value
 // enum (Applied/Shortlisted/Rejected/Hired) — approximated as Shortlisted

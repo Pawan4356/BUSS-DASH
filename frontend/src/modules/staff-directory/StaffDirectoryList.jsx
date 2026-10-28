@@ -6,6 +6,7 @@ import {
   EmptyState,
   KebabMenu,
   PersonCell,
+  rowClick,
   SearchInput,
   StatusBadge,
   SummaryStats,
@@ -14,6 +15,8 @@ import {
   useToast,
 } from '../../shared/components'
 import { STAFF_STATUS, toOptions } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useDeleteStaffMutation, useGetStaffSummaryQuery, useListStaffQuery } from './api'
 import { InviteStaffModal } from './InviteStaffModal'
 import { useGetAttendanceRegisterQuery } from '../staff-attendance/api'
@@ -31,6 +34,7 @@ export function StaffDirectoryList() {
   const [pendingDelete, setPendingDelete] = useState(null)
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.STAFF_DIRECTORY)
 
   const { data: summary, isLoading: summaryLoading } = useGetStaffSummaryQuery()
   const { data: staff, isLoading, isFetching } = useListStaffQuery({
@@ -64,9 +68,11 @@ export function StaffDirectoryList() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Staff Directory</h1>
-        <button type="button" className="btn btn-primary" onClick={() => setInviting(true)}>
-          + Invite Staff
-        </button>
+        {canManage && (
+          <button type="button" className="btn btn-primary" onClick={() => setInviting(true)}>
+            + Invite Staff
+          </button>
+        )}
       </div>
 
       <SummaryStats
@@ -100,7 +106,7 @@ export function StaffDirectoryList() {
       ) : staff.length === 0 ? (
         <EmptyState
           title={archived ? 'No archived staff' : 'No staff yet'}
-          description={archived ? undefined : 'Invite your first staff member to get started.'}
+          description={archived || !canManage ? undefined : 'Invite your first staff member to get started.'}
         />
       ) : (
         <div className="table-wrap card">
@@ -118,7 +124,7 @@ export function StaffDirectoryList() {
             </thead>
             <tbody>
               {staff.map((s) => (
-                <tr key={s.id}>
+                <tr key={s.id} className="is-clickable" onClick={rowClick(() => navigate(`/staff-directory/${s.id}`))}>
                   <td>
                     <PersonCell name={s.name} subtitle={s.title} onOpen={() => navigate(`/staff-directory/${s.id}`)} />
                   </td>
@@ -139,11 +145,15 @@ export function StaffDirectoryList() {
                     <KebabMenu
                       items={[
                         { label: 'View details', onClick: () => navigate(`/staff-directory/${s.id}`) },
-                        {
-                          label: 'Edit',
-                          onClick: () => navigate(`/staff-directory/${s.id}`, { state: { startInEdit: true } }),
-                        },
-                        { label: 'Delete', danger: true, onClick: () => setPendingDelete(s) },
+                        ...(canManage
+                          ? [
+                              {
+                                label: 'Edit',
+                                onClick: () => navigate(`/staff-directory/${s.id}`, { state: { startInEdit: true } }),
+                              },
+                              { label: 'Delete', danger: true, onClick: () => setPendingDelete(s) },
+                            ]
+                          : []),
                       ]}
                     />
                   </td>

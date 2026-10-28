@@ -177,8 +177,8 @@ describe('WB-PATH  PATCH /staff-attendance/register/:staffId', () => {
     expect(fake.prisma._db.attendanceRecord[0].checkIn).toBeNull()
   })
 
-  it('register row: invited staff without a name -> name is null (|| null branch)', async () => {
-    seedStaff(fake.prisma, { firstName: null, lastName: null, status: 'PENDING' })
+  it('register row: staff without a name -> name is null (|| null branch)', async () => {
+    seedStaff(fake.prisma, { firstName: null, lastName: null, status: 'ACTIVE' })
     const res = await att('get', `/register?date=${d}`)
     expect(res.body.rows.some((r) => r.name === null)).toBe(true)
   })

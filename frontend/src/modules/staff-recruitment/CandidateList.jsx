@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { DetailHeader, EmptyState, KebabMenu, NotFound, PersonCell, StatusBadge, TableSkeleton, Tabs } from '../../shared/components'
 import { CANDIDATE_STATUS } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetRecruitmentQuery, useListCandidatesQuery } from './api'
 import { AddCandidateModal } from './AddCandidateModal'
 
@@ -10,6 +12,7 @@ export function CandidateList() {
   const { recruitmentId } = useParams()
   const navigate = useNavigate()
   const business = useSelector((s) => s.auth.business)
+  const canManage = useCanManage(FLAGS.STAFF_RECRUITMENT)
   const { data: recruitment, error: loadError } = useGetRecruitmentQuery(recruitmentId)
   const [adding, setAdding] = useState(false)
 
@@ -59,7 +62,7 @@ export function CandidateList() {
           ]}
         />
         <div className="toolbar-spacer" />
-        {showWalkIn && (
+        {canManage && showWalkIn && (
           <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
             + Add Candidate
           </button>
@@ -99,7 +102,7 @@ export function CandidateList() {
                     <KebabMenu
                       items={[
                         { label: 'View', onClick: () => navigate(c.id) },
-                        ...(c.source === 'WALK_IN' ? [{ label: 'Edit', onClick: () => navigate(c.id, { state: { startInEdit: true } }) }] : []),
+                        ...(canManage && c.source === 'WALK_IN' ? [{ label: 'Edit', onClick: () => navigate(c.id, { state: { startInEdit: true } }) }] : []),
                       ]}
                     />
                   </td>

@@ -21,6 +21,11 @@ export const staffAttendanceApi = baseApi.injectEndpoints({
     }),
     getAttendanceHistory: builder.query({
       query: ({ staffId, month }) => ({ url: `/staff-attendance/staff/${staffId}/history`, params: { month } }),
+      providesTags: ['Attendance'],
+    }),
+    getAttendanceMonths: builder.query({
+      query: (staffId) => `/staff-attendance/staff/${staffId}/months`,
+      providesTags: ['Attendance'],
     }),
   }),
 })
@@ -30,4 +35,5 @@ export const {
   useGetAttendanceRegisterQuery,
   useUpdateAttendanceMutation,
   useGetAttendanceHistoryQuery,
+  useGetAttendanceMonthsQuery,
 } = staffAttendanceApi

@@ -166,10 +166,23 @@ The same logic exists in three places, kept in sync on purpose:
 A white-box test checks the frontend and backend copies agree on all 2,304 flag/business
 combinations.
 
-Account **roles** (`OWNER`, `STAFF_MANAGER`, `RECRUITMENT_MANAGER`, `ATTENDANCE_MANAGER`,
-`RESOURCE_MANAGER`, `OPERATIONS_MANAGER`, `STAFF`) are stored and shown, but are **not yet
-enforced** by the API. Access is per business, not per role (see
-[Known limitations](#13-known-limitations)).
+Account **roles** are enforced on writes. Every account in a business can *read* the
+modules the business has purchased. *Changing* data (any `POST` / `PATCH` / `DELETE`) needs
+`OWNER` or the module's holder role. Any other role gets
+`403 { reason: 'insufficient-role' }`:
+
+| Module | Roles that can make changes |
+|---|---|
+| Staff Directory | `OWNER`, `STAFF_MANAGER` |
+| Staff Recruitment | `OWNER`, `RECRUITMENT_MANAGER` |
+| Staff Attendance | `OWNER`, `ATTENDANCE_MANAGER` |
+| Resource Directory | `OWNER`, `RESOURCE_MANAGER` |
+| Operational Scheduling | `OWNER`, `OPERATIONS_MANAGER` |
+
+`STAFF` is read-only everywhere except their own `/profile`. The rules live in
+`backend/express/src/lib/permissions.js` (enforced by `requireManagerForWrites`), in
+`backend/fastapi/app/auth.py` for scheduling writes, and in
+`frontend/src/shared/permissions` (UX only: hides buttons and menu items the role can't use).
 
 ## 5. Repository layout
 
@@ -354,8 +367,8 @@ are marked `it.fails`, so the suite stays green. When a defect is fixed its test
 | DEF-04 | Attendance | `?date=garbage` returns 500 instead of 400 |
 | DEF-05 | Attendance | On a non-UTC server (e.g. IST) `/register` reports the previous calendar date |
 | DEF-06 | Attendance | An unknown `status` value is not rejected with 400 |
-| DEF-07 | Directory | Role `STAFF` can delete staff (Staff Manager role not enforced) |
-| DEF-08 | Attendance | Attendance Manager role not enforced |
+| ~~DEF-07~~ | Directory | **Fixed.** Role `STAFF` could delete staff (Staff Manager role not enforced) |
+| ~~DEF-08~~ | Attendance | **Fixed.** Attendance Manager role not enforced |
 | DEF-09 | Directory | Work-responsibility checklist is not gated by purchased flags |
 | DEF-10 | Directory | The same `accountId` can be invited twice in one business |
 

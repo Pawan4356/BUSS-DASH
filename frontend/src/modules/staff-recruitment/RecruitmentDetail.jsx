@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { DatePicker, DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
 import { INTERVIEW_STATUS, INTERVIEW_TYPE, RECRUITMENT_AUDIENCE, toOptions } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetRecruitmentQuery, useLaunchRecruitmentMutation, useUpdateRecruitmentMutation } from './api'
 import { useListStaffQuery } from '../staff-directory/api'
 
@@ -28,12 +30,13 @@ export function RecruitmentDetail() {
   const { push } = useToast()
   const business = useSelector((s) => s.auth.business)
   const flags = useSelector((s) => s.auth.flags)
+  const canManage = useCanManage(FLAGS.STAFF_RECRUITMENT)
 
   const { data: recruitment, isLoading, error: loadError } = useGetRecruitmentQuery(id)
   const { data: staffList } = useListStaffQuery({ archived: false }, { skip: !flags?.staffDirectory })
   const [updateRecruitment, { isLoading: saving }] = useUpdateRecruitmentMutation()
   const [launchRecruitment] = useLaunchRecruitmentMutation()
-  const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
+  const [mode, setMode] = useState(canManage && location.state?.startInEdit ? 'edit' : 'view')
   const [form, setForm] = useState(null)
 
   useEffect(() => {
@@ -105,14 +108,14 @@ export function RecruitmentDetail() {
         title={recruitment.role}
         subtitle={`Status: ${recruitment.status}`}
         mode={mode}
-        onEdit={() => setMode('edit')}
+        onEdit={canManage ? () => setMode('edit') : undefined}
         onSave={handleSave}
         onCancel={handleCancel}
         saving={saving}
       />
 
       <div className="cluster" style={{ marginBottom: 16 }}>
-        {recruitment.status === 'INACTIVE' && (
+        {canManage && recruitment.status === 'INACTIVE' && (
           <button type="button" className="btn btn-primary" onClick={handleLaunch}>
             Launch
           </button>

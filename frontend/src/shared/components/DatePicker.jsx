@@ -84,6 +84,7 @@ export function DatePicker({
   mode = 'date',
   min,
   max,
+  enabledMonths,
   clearable = false,
   placeholder,
   disabled = false,
@@ -109,8 +110,13 @@ export function DatePicker({
   const outOfRange = (d) => (minDate && d < minDate && !sameDay(d, minDate)) || (maxDate && d > maxDate && !sameDay(d, maxDate))
   // A month/year is only unpickable when the whole span falls outside min/max.
   const spanOutOfRange = (start, end) => (minDate && end < minDate) || (maxDate && start > maxDate)
-  const monthOutOfRange = (y, m) => spanOutOfRange(new Date(y, m, 1), new Date(y, m + 1, 0))
-  const yearOutOfRange = (y) => spanOutOfRange(new Date(y, 0, 1), new Date(y, 11, 31))
+  // `enabledMonths` ("YYYY-MM" list) narrows month mode further, e.g. to months that have data.
+  const enabledSet = enabledMonths ? new Set(enabledMonths) : null
+  const monthOutOfRange = (y, m) =>
+    spanOutOfRange(new Date(y, m, 1), new Date(y, m + 1, 0)) || Boolean(enabledSet && !enabledSet.has(toMonthIso(y, m)))
+  const yearOutOfRange = (y) =>
+    spanOutOfRange(new Date(y, 0, 1), new Date(y, 11, 31)) ||
+    Boolean(enabledSet && !Array.from({ length: 12 }, (_, m) => toMonthIso(y, m)).some((k) => enabledSet.has(k)))
 
   function openPicker() {
     if (disabled) return
@@ -382,7 +388,7 @@ export function DatePicker({
             <button
               type="button"
               className="dp-link is-accent"
-              disabled={!isMonth && outOfRange(today)}
+              disabled={isMonth ? monthOutOfRange(today.getFullYear(), today.getMonth()) : outOfRange(today)}
               onClick={() => pick(isMonth ? toMonthIso(today.getFullYear(), today.getMonth()) : toIso(today))}
             >
               {isMonth ? 'This month' : 'Today'}

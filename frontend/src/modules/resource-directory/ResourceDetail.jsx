@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
+import { DetailHeader, NotFound, StatusBadge, TableSkeleton, useToast } from '../../shared/components'
 import { BUSINESS_STATUS, OPERATIONAL_STATUS, RESOURCE_BEHAVIOR, toOptions } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetResourceQuery, useListWorkspacesQuery, useUpdateResourceMutation } from './api'
 
 function buildForm(resource) {
@@ -22,7 +24,8 @@ export function ResourceDetail() {
   const { data: resource, isLoading, error: loadError } = useGetResourceQuery(id)
   const { data: workspaces } = useListWorkspacesQuery()
   const [updateResource, { isLoading: saving }] = useUpdateResourceMutation()
-  const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
+  const canManage = useCanManage(FLAGS.RESOURCE_DIRECTORY)
+  const [mode, setMode] = useState(canManage && location.state?.startInEdit ? 'edit' : 'view')
   const [form, setForm] = useState(null)
   const { push } = useToast()
 
@@ -67,105 +70,117 @@ export function ResourceDetail() {
         backTo="/resource-directory"
         backLabel="Resource Directory"
         title={resource.name}
+        subtitle={resource.category || undefined}
         mode={mode}
-        onEdit={() => setMode('edit')}
+        onEdit={canManage ? () => setMode('edit') : undefined}
         onSave={handleSave}
         onCancel={handleCancel}
         saving={saving}
       />
 
-      <div className="field-grid">
-        <div className="field">
-          <span className="field-label">Location</span>
-          {mode === 'edit' ? (
-            <div className="stack">
-              {(workspaces ?? []).map((w) => (
-                <label key={w.id} className="cluster" style={{ fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.workspaceIds.includes(w.id)}
-                    onChange={(e) =>
-                      set(
-                        'workspaceIds',
-                        e.target.checked ? [...form.workspaceIds, w.id] : form.workspaceIds.filter((wid) => wid !== w.id),
-                      )
-                    }
-                  />
-                  {w.name}
-                </label>
-              ))}
-              {(workspaces ?? []).length === 0 && <span className="text-muted">No workspaces to attach — leave as Independent</span>}
-            </div>
-          ) : (
-            <div className="field-static">{resource.location.length > 0 ? resource.location.join(', ') : 'Independent Resource'}</div>
-          )}
+      <section className="detail-card">
+        <div className="detail-card-head">
+          <h2 className="section-title">Overview</h2>
         </div>
-        <div className="field">
-          <span className="field-label">Category</span>
-          {mode === 'edit' ? (
-            <input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} />
-          ) : (
-            <div className="field-static">{form.category || '—'}</div>
-          )}
-        </div>
-        <div className="field">
-          <span className="field-label">Business Status</span>
-          {mode === 'edit' ? (
-            <select className="select" value={form.businessStatus} onChange={(e) => set('businessStatus', e.target.value)}>
-              {toOptions(BUSINESS_STATUS).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="field-static">{BUSINESS_STATUS[form.businessStatus]}</div>
-          )}
-        </div>
-        {flags?.operationalScheduling && (
-          <div className="field">
-            <span className="field-label">Operational Status</span>
-            <div className="field-static">
-              {resource.operationalStatus ? OPERATIONAL_STATUS[resource.operationalStatus] : 'Not scheduled yet'}
-            </div>
+        <div className="field-grid">
+          <div className="field" style={mode === 'edit' ? { gridColumn: '1 / -1', order: 99 } : undefined}>
+            <span className="field-label">Location</span>
+            {mode === 'edit' ? (
+              <div className="check-grid">
+                {(workspaces ?? []).map((w) => (
+                  <label key={w.id} className="check-tile">
+                    <input
+                      type="checkbox"
+                      checked={form.workspaceIds.includes(w.id)}
+                      onChange={(e) =>
+                        set(
+                          'workspaceIds',
+                          e.target.checked ? [...form.workspaceIds, w.id] : form.workspaceIds.filter((wid) => wid !== w.id),
+                        )
+                      }
+                    />
+                    {w.name}
+                  </label>
+                ))}
+                {(workspaces ?? []).length === 0 && <span className="text-muted">No workspaces to attach — leave as Independent</span>}
+              </div>
+            ) : (
+              <div className="field-static">{resource.location.length > 0 ? resource.location.join(', ') : 'Independent Resource'}</div>
+            )}
           </div>
-        )}
-        {flags?.staffDirectory && (
           <div className="field">
-            <span className="field-label">Responsible Person</span>
-            <div className="field-static">{resource.responsible?.length > 0 ? resource.responsible.join(', ') : 'Unassigned'}</div>
+            <span className="field-label">Category</span>
+            {mode === 'edit' ? (
+              <input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} />
+            ) : (
+              <div className="field-static">{form.category || '—'}</div>
+            )}
           </div>
-        )}
-        <div className="field">
-          <span className="field-label">Behavior</span>
-          {mode === 'edit' ? (
-            <select className="select" value={form.behavior} onChange={(e) => set('behavior', e.target.value)}>
-              {toOptions(RESOURCE_BEHAVIOR).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="field-static">{RESOURCE_BEHAVIOR[form.behavior]}</div>
+          <div className="field">
+            <span className="field-label">Business Status</span>
+            {mode === 'edit' ? (
+              <select className="select" value={form.businessStatus} onChange={(e) => set('businessStatus', e.target.value)}>
+                {toOptions(BUSINESS_STATUS).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="field-static">
+                <StatusBadge value={form.businessStatus} label={BUSINESS_STATUS[form.businessStatus]} />
+              </div>
+            )}
+          </div>
+          {flags?.operationalScheduling && (
+            <div className="field">
+              <span className="field-label">Operational Status</span>
+              <div className="field-static">
+                {resource.operationalStatus ? (
+                  <StatusBadge value={resource.operationalStatus} label={OPERATIONAL_STATUS[resource.operationalStatus]} />
+                ) : (
+                  <span className="detail-empty">Not scheduled yet</span>
+                )}
+              </div>
+            </div>
           )}
-        </div>
-        <div className="field">
-          <span className="field-label">Scheduling Required</span>
-          {mode === 'edit' ? (
-            <label className="cluster" style={{ fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={form.schedulingRequired}
-                onChange={(e) => set('schedulingRequired', e.target.checked)}
-              />
-              Yes
-            </label>
-          ) : (
-            <div className="field-static">{form.schedulingRequired ? 'Yes' : 'No'}</div>
+          {flags?.staffDirectory && (
+            <div className="field">
+              <span className="field-label">Responsible Person</span>
+              <div className="field-static">{resource.responsible?.length > 0 ? resource.responsible.join(', ') : 'Unassigned'}</div>
+            </div>
           )}
+          <div className="field">
+            <span className="field-label">Behavior</span>
+            {mode === 'edit' ? (
+              <select className="select" value={form.behavior} onChange={(e) => set('behavior', e.target.value)}>
+                {toOptions(RESOURCE_BEHAVIOR).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="field-static">{RESOURCE_BEHAVIOR[form.behavior]}</div>
+            )}
+          </div>
+          <div className="field">
+            <span className="field-label">Scheduling Required</span>
+            {mode === 'edit' ? (
+              <label className="cluster" style={{ fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={form.schedulingRequired}
+                  onChange={(e) => set('schedulingRequired', e.target.checked)}
+                />
+                Yes
+              </label>
+            ) : (
+              <div className="field-static">{form.schedulingRequired ? 'Yes' : 'No'}</div>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }
