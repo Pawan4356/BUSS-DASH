@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useSelector } from 'react-redux'
 import { DatePicker, EmptyState, PersonCell, StatusBadge, TableSkeleton, Tabs, useToast } from '../../shared/components'
 import { ASSIGNMENT_STATUS } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useCancelAssignmentMutation, useGetSchedulingListQuery } from './api'
 import { AssignModal } from './AssignModal'
 
@@ -15,7 +17,8 @@ export function SchedulingList() {
   const [tab, setTab] = useState('workspace')
   const { data, isLoading } = useGetSchedulingListQuery(date)
   const [assignTarget, setAssignTarget] = useState(null)
-  const isPast = date < today()
+  const canManage = useCanManage(FLAGS.OPERATIONAL_SCHEDULING)
+  const readOnly = !canManage || date < today()
 
   if (isLoading || !data) return <TableSkeleton />
 
@@ -30,10 +33,7 @@ export function SchedulingList() {
             { value: 'workspace', label: 'Workspace Resources' },
             { value: 'independent', label: 'Independent Resources' },
             ...(flags?.operationalSchedulingPremium
-              ? [
-                  { value: 'staff', label: 'Staff' },
-                  { value: 'quick', label: 'Quick Assign' },
-                ]
+              ? [{ value: 'staff', label: 'Staff' }, ...(canManage ? [{ value: 'quick', label: 'Quick Assign' }] : [])]
               : []),
           ]}
         />
@@ -41,14 +41,14 @@ export function SchedulingList() {
       </div>
 
       {tab === 'workspace' && (
-        <WorkspaceResourcesTab data={data} isPast={isPast} onAssign={setAssignTarget} />
+        <WorkspaceResourcesTab data={data} readOnly={readOnly} onAssign={setAssignTarget} />
       )}
       {tab === 'independent' && (
-        <ResourceCardsTab resources={data.independentResources} isPast={isPast} onAssign={setAssignTarget} />
+        <ResourceCardsTab resources={data.independentResources} readOnly={readOnly} onAssign={setAssignTarget} />
       )}
       {tab === 'staff' && flags?.operationalSchedulingPremium && <StaffTab staff={data.staff ?? []} />}
-      {tab === 'quick' && flags?.operationalSchedulingPremium && (
-        <QuickAssignTab pickers={data.pickers} isPast={isPast} onAssign={setAssignTarget} />
+      {tab === 'quick' && flags?.operationalSchedulingPremium && canManage && (
+        <QuickAssignTab pickers={data.pickers} readOnly={readOnly} onAssign={setAssignTarget} />
       )}
 
       {assignTarget && (
@@ -66,6 +66,7 @@ export function SchedulingList() {
 function AssignmentRow({ a }) {
   const [cancelAssignment] = useCancelAssignmentMutation()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.OPERATIONAL_SCHEDULING)
   return (
     <div className="assign-row">
       <PersonCell
@@ -75,32 +76,34 @@ function AssignmentRow({ a }) {
       />
       <span className="cluster">
         <StatusBadge value={a.status} label={ASSIGNMENT_STATUS[a.status]} />
-        <button
-          type="button"
-          className="btn btn-icon"
-          aria-label="Cancel assignment"
-          onClick={async () => {
-            try {
-              await cancelAssignment(a.id).unwrap()
-              push('Assignment cancelled')
-            } catch {
-              push('Could not cancel assignment', { tone: 'danger' })
-            }
-          }}
-        >
-          ✕
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            className="btn btn-icon"
+            aria-label="Cancel assignment"
+            onClick={async () => {
+              try {
+                await cancelAssignment(a.id).unwrap()
+                push('Assignment cancelled')
+              } catch {
+                push('Could not cancel assignment', { tone: 'danger' })
+              }
+            }}
+          >
+            ✕
+          </button>
+        )}
       </span>
     </div>
   )
 }
 
-function ResourceCard({ resource, isPast, onAssign }) {
+function ResourceCard({ resource, readOnly, onAssign }) {
   return (
     <div className="card" style={{ padding: 12, marginBottom: 8 }}>
       <div className="cluster" style={{ justifyContent: 'space-between' }}>
         <strong style={{ fontSize: 13 }}>{resource.name}</strong>
-        {!isPast && (
+        {!readOnly && (
           <button type="button" className="btn btn-sm" onClick={() => onAssign({ resourceId: resource.id })}>
             + Assign
           </button>
@@ -121,7 +124,7 @@ function ResourceCard({ resource, isPast, onAssign }) {
   )
 }
 
-function WorkspaceResourcesTab({ data, isPast, onAssign }) {
+function WorkspaceResourcesTab({ data, readOnly, onAssign }) {
   if (data.workspaceResources.length === 0) return <EmptyState title="No active workspaces" />
   return (
     <div className="stack">
@@ -129,7 +132,7 @@ function WorkspaceResourcesTab({ data, isPast, onAssign }) {
         <div className="card" style={{ padding: 16 }} key={w.id}>
           <div className="cluster" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
             <strong className="workspace-name">{w.name}</strong>
-            {!isPast && (
+            {!readOnly && (
               <button type="button" className="btn btn-sm" onClick={() => onAssign({ workspaceId: w.id })}>
                 + Assign
               </button>
@@ -145,7 +148,7 @@ function WorkspaceResourcesTab({ data, isPast, onAssign }) {
           {w.resources.length > 0 && (
             <div style={{ marginTop: 12 }}>
               {w.resources.map((r) => (
-                <ResourceCard resource={r} isPast={isPast} onAssign={onAssign} key={r.id} />
+                <ResourceCard resource={r} readOnly={readOnly} onAssign={onAssign} key={r.id} />
               ))}
             </div>
           )}
@@ -155,12 +158,12 @@ function WorkspaceResourcesTab({ data, isPast, onAssign }) {
   )
 }
 
-function ResourceCardsTab({ resources, isPast, onAssign }) {
+function ResourceCardsTab({ resources, readOnly, onAssign }) {
   if (resources.length === 0) return <EmptyState title="No independent resources" />
   return (
     <div>
       {resources.map((r) => (
-        <ResourceCard resource={r} isPast={isPast} onAssign={onAssign} key={r.id} />
+        <ResourceCard resource={r} readOnly={readOnly} onAssign={onAssign} key={r.id} />
       ))}
     </div>
   )
@@ -186,7 +189,7 @@ function StaffTab({ staff }) {
   )
 }
 
-function QuickAssignTab({ pickers, isPast, onAssign }) {
+function QuickAssignTab({ pickers, readOnly, onAssign }) {
   return (
     <div className="card" style={{ padding: 16 }}>
       <p className="text-muted">Assign a staff member directly to a workspace or resource.</p>
@@ -195,7 +198,7 @@ function QuickAssignTab({ pickers, isPast, onAssign }) {
           <span className="field-label">Workspace</span>
           <select
             className="select"
-            disabled={isPast}
+            disabled={readOnly}
             onChange={(e) => e.target.value && onAssign({ workspaceId: e.target.value })}
             defaultValue=""
           >
@@ -213,7 +216,7 @@ function QuickAssignTab({ pickers, isPast, onAssign }) {
           <span className="field-label">Resource</span>
           <select
             className="select"
-            disabled={isPast}
+            disabled={readOnly}
             onChange={(e) => e.target.value && onAssign({ resourceId: e.target.value })}
             defaultValue=""
           >

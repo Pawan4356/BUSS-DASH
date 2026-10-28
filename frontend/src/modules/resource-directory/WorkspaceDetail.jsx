@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
+import { DetailHeader, NotFound, StatusBadge, TableSkeleton, useToast } from '../../shared/components'
 import { BUSINESS_STATUS, OPERATIONAL_STATUS, toOptions } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetWorkspaceQuery, useUpdateWorkspaceMutation } from './api'
 
 function buildForm(workspace) {
@@ -20,7 +22,8 @@ export function WorkspaceDetail() {
   const flags = useSelector((s) => s.auth.flags)
   const { data: workspace, isLoading, error: loadError } = useGetWorkspaceQuery(id)
   const [updateWorkspace, { isLoading: saving }] = useUpdateWorkspaceMutation()
-  const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
+  const canManage = useCanManage(FLAGS.RESOURCE_DIRECTORY)
+  const [mode, setMode] = useState(canManage && location.state?.startInEdit ? 'edit' : 'view')
   const [form, setForm] = useState(null)
   const { push } = useToast()
 
@@ -75,85 +78,113 @@ export function WorkspaceDetail() {
         backTo="/resource-directory"
         backLabel="Resource Directory"
         title={workspace.name}
+        subtitle={workspace.type || undefined}
         mode={mode}
-        onEdit={() => setMode('edit')}
+        onEdit={canManage ? () => setMode('edit') : undefined}
         onSave={handleSave}
         onCancel={handleCancel}
         saving={saving}
       />
 
-      <div className="field-grid">
-        <div className="field">
-          <span className="field-label">Name</span>
-          {mode === 'edit' ? (
-            <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} />
-          ) : (
-            <div className="field-static">{form.name}</div>
-          )}
+      <section className="detail-card">
+        <div className="detail-card-head">
+          <h2 className="section-title">Overview</h2>
         </div>
-        <div className="field">
-          <span className="field-label">Type</span>
-          {mode === 'edit' ? (
-            <input className="input" value={form.type} onChange={(e) => set('type', e.target.value)} />
-          ) : (
-            <div className="field-static">{form.type || '—'}</div>
-          )}
-        </div>
-        <div className="field">
-          <span className="field-label">Business Status</span>
-          {mode === 'edit' ? (
-            <select className="select" value={form.businessStatus} onChange={(e) => set('businessStatus', e.target.value)}>
-              {toOptions(BUSINESS_STATUS).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="field-static">{BUSINESS_STATUS[form.businessStatus]}</div>
-          )}
-        </div>
-        {flags?.operationalScheduling && (
-          <div className="field">
-            <span className="field-label">Operational Status</span>
-            <div className="field-static">
-              {workspace.operationalStatus ? OPERATIONAL_STATUS[workspace.operationalStatus] : 'Not scheduled yet'}
+        <div className="field-grid">
+          {mode === 'edit' && (
+            <div className="field">
+              <span className="field-label">Name</span>
+              <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} />
             </div>
+          )}
+          <div className="field">
+            <span className="field-label">Type</span>
+            {mode === 'edit' ? (
+              <input className="input" value={form.type} onChange={(e) => set('type', e.target.value)} />
+            ) : (
+              <div className="field-static">{form.type || '—'}</div>
+            )}
           </div>
-        )}
+          <div className="field">
+            <span className="field-label">Business Status</span>
+            {mode === 'edit' ? (
+              <select className="select" value={form.businessStatus} onChange={(e) => set('businessStatus', e.target.value)}>
+                {toOptions(BUSINESS_STATUS).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="field-static">
+                <StatusBadge value={form.businessStatus} label={BUSINESS_STATUS[form.businessStatus]} />
+              </div>
+            )}
+          </div>
+          {flags?.operationalScheduling && (
+            <div className="field">
+              <span className="field-label">Operational Status</span>
+              <div className="field-static">
+                {workspace.operationalStatus ? (
+                  <StatusBadge value={workspace.operationalStatus} label={OPERATIONAL_STATUS[workspace.operationalStatus]} />
+                ) : (
+                  <span className="detail-empty">Not scheduled yet</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         {flags?.staffDirectory && (
-          <div className="field">
-            <span className="field-label">Responsible Person</span>
-            <div className="field-static">
-              {workspace.responsiblePersons?.length > 0
-                ? workspace.responsiblePersons.map((p) => p.name).join(', ')
-                : 'Unassigned'}
-            </div>
+          <>
+            <h3 className="detail-sub" style={{ marginTop: 16 }}>
+              Responsible
+            </h3>
+            {workspace.responsiblePersons?.length > 0 ? (
+              <div className="chips">
+                {workspace.responsiblePersons.map((p) => (
+                  <span className="chip" key={p.id ?? p.name}>
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="detail-empty">Unassigned</p>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="detail-card">
+        <div className="detail-card-head">
+          <h2 className="section-title">Sub-spaces</h2>
+          <span className="count">{form.subSpaces.length}</span>
+        </div>
+        {mode === 'edit' ? (
+          <div className="check-grid">
+            {form.subSpaces.map((s, index) => (
+              <div className="cluster" key={index}>
+                <input className="input" value={s.name} onChange={(e) => updateSubSpace(index, e.target.value)} />
+                <button type="button" className="btn btn-icon" aria-label="Remove sub-space" onClick={() => removeSubSpace(index)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button type="button" className="btn btn-sm schedule-add" onClick={addSubSpace}>
+              + Add sub-space
+            </button>
+          </div>
+        ) : form.subSpaces.length === 0 ? (
+          <p className="detail-empty">No sub-spaces</p>
+        ) : (
+          <div className="chips">
+            {form.subSpaces.map((s, index) => (
+              <span className="chip" key={index}>
+                {s.name}
+              </span>
+            ))}
           </div>
         )}
-      </div>
-
-      <h2 className="section-title">Sub-spaces</h2>
-      <div className="stack">
-        {form.subSpaces.map((s, index) =>
-          mode === 'edit' ? (
-            <div className="cluster" key={index}>
-              <input className="input" value={s.name} onChange={(e) => updateSubSpace(index, e.target.value)} />
-              <button type="button" className="btn btn-icon" aria-label="Remove sub-space" onClick={() => removeSubSpace(index)}>
-                ✕
-              </button>
-            </div>
-          ) : (
-            <div key={index}>{s.name}</div>
-          ),
-        )}
-        {form.subSpaces.length === 0 && mode !== 'edit' && <p className="text-muted">No sub-spaces</p>}
-        {mode === 'edit' && (
-          <button type="button" className="btn btn-sm" onClick={addSubSpace}>
-            + Add Sub-space
-          </button>
-        )}
-      </div>
+      </section>
     </div>
   )
 }

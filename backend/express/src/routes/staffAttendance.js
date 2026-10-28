@@ -3,18 +3,22 @@ import { prisma } from '../lib/prisma.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requireFlag } from '../middleware/requireFlag.js'
+import { requireManagerForWrites } from '../middleware/requireRole.js'
 import { FLAGS } from '../lib/entitlements.js'
 import { computeLateEarly, dayOfWeekForDate, startOfDay, stayTimeMinutes } from '../lib/attendanceHelpers.js'
 
 export const staffAttendanceRouter = Router()
-staffAttendanceRouter.use(requireAuth, requireFlag(FLAGS.STAFF_ATTENDANCE))
+staffAttendanceRouter.use(requireAuth, requireFlag(FLAGS.STAFF_ATTENDANCE), requireManagerForWrites(FLAGS.STAFF_ATTENDANCE))
+
+/** Staff who belong on the register: not archived, and past the invite stage. */
+const ATTENDANCE_STAFF = { archived: false, status: { not: 'PENDING' } }
 
 staffAttendanceRouter.get(
   '/summary',
   asyncHandler(async (req, res) => {
     const today = startOfDay()
     const staff = await prisma.staff.findMany({
-      where: { businessId: req.businessId, archived: false },
+      where: { businessId: req.businessId, ...ATTENDANCE_STAFF },
       select: { id: true },
     })
     const records = await prisma.attendanceRecord.findMany({
@@ -62,7 +66,7 @@ staffAttendanceRouter.get(
     const staff = await prisma.staff.findMany({
       where: {
         businessId: req.businessId,
-        archived: false,
+        ...ATTENDANCE_STAFF,
         ...(search && {
           OR: [
             { firstName: { contains: String(search), mode: 'insensitive' } },
@@ -175,5 +179,20 @@ staffAttendanceRouter.get(
         stayTimeMinutes: stayTimeMinutes(r.checkIn, r.checkOut),
       })),
     )
+  }),
+)
+
+/** Months ("YYYY-MM", ascending) that have at least one record — drives the history month picker. */
+staffAttendanceRouter.get(
+  '/staff/:staffId/months',
+  asyncHandler(async (req, res) => {
+    const staff = await prisma.staff.findFirst({ where: { id: req.params.staffId, businessId: req.businessId } })
+    if (!staff) return res.status(404).json({ message: 'Staff member not found' })
+
+    const records = await prisma.attendanceRecord.findMany({
+      where: { staffId: staff.id },
+      orderBy: { date: 'asc' },
+    })
+    res.json([...new Set(records.map((r) => r.date.toISOString().slice(0, 7)))])
   }),
 )

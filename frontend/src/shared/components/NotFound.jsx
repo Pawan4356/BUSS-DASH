@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { BackIcon } from './BackIcon'
 
 /**
  * 404 screen — used for unmatched routes and for detail pages whose record
@@ -21,7 +22,8 @@ export function NotFound({
       <p className="not-found-text">{description}</p>
       <div className="cluster not-found-actions">
         <button type="button" className="btn" onClick={() => navigate(-1)}>
-          ← Go back
+          <BackIcon />
+          Go back
         </button>
         <Link to={backTo} className="btn btn-primary">
           {backLabel}

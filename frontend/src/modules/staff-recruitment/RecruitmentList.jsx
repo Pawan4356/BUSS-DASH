@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EmptyState, KebabMenu, SearchInput, StatusBadge, SummaryStats, TableSkeleton, Tabs, useToast } from '../../shared/components'
 import { RECRUITMENT_STATUS, toOptions } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import {
   useCloseRecruitmentMutation,
   useDuplicateRecruitmentMutation,
@@ -18,6 +20,18 @@ function describeRole(r) {
   return [r.employmentType, openings, r.experienceRequired, audience].filter(Boolean).join(', ') || 'No details yet'
 }
 
+/**
+ * The pipeline worth opening first: the active role with the most candidates
+ * still awaiting a decision. Ties (and the no-candidates case) go to the
+ * newest, since the API lists newest first.
+ */
+function defaultRecruitment(recruitments) {
+  if (!recruitments?.length) return null
+  const active = recruitments.filter((r) => r.status === 'ACTIVE')
+  if (active.length === 0) return recruitments[0]
+  return active.reduce((best, r) => ((r.awaitingDecision ?? 0) > (best.awaitingDecision ?? 0) ? r : best))
+}
+
 export function RecruitmentList() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
@@ -25,6 +39,7 @@ export function RecruitmentList() {
   const [selectedId, setSelectedId] = useState(null)
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.STAFF_RECRUITMENT)
 
   const { data: summary, isLoading: summaryLoading } = useGetRecruitmentSummaryQuery()
   const { data: recruitments, isLoading } = useListRecruitmentsQuery({
@@ -44,12 +59,7 @@ export function RecruitmentList() {
     }
   }
 
-  // Default to the first role still taking applications, not just the newest.
-  const selected =
-    recruitments?.find((r) => r.id === selectedId) ??
-    recruitments?.find((r) => r.status === 'ACTIVE') ??
-    recruitments?.[0] ??
-    null
+  const selected = recruitments?.find((r) => r.id === selectedId) ?? defaultRecruitment(recruitments)
 
   return (
     <div>
@@ -59,9 +69,11 @@ export function RecruitmentList() {
           <button type="button" className="btn" onClick={() => navigate('candidates')}>
             Candidate Applications
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-            + Create Recruitment
-          </button>
+          {canManage && (
+            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+              + Create Recruitment
+            </button>
+          )}
         </div>
       </div>
 
@@ -90,7 +102,7 @@ export function RecruitmentList() {
       {isLoading ? (
         <TableSkeleton />
       ) : recruitments.length === 0 ? (
-        <EmptyState title="No recruitments yet" description="Create your first recruitment posting." />
+        <EmptyState title="No recruitments yet" description={canManage ? 'Create your first recruitment posting.' : undefined} />
       ) : (
         <>
           <div className="card">
@@ -114,17 +126,21 @@ export function RecruitmentList() {
                     <KebabMenu
                       items={[
                         { label: 'View setting', onClick: () => navigate(r.id) },
-                        {
-                          label: 'Duplicate Recruitment',
-                          onClick: () => handleAction(duplicateRecruitment, r.id, 'Recruitment duplicated'),
-                        },
-                        ...(r.status === 'ACTIVE'
-                          ? [{ label: 'Close Recruitment', onClick: () => handleAction(closeRecruitment, r.id, 'Recruitment closed') }]
+                        ...(canManage
+                          ? [
+                              {
+                                label: 'Duplicate Recruitment',
+                                onClick: () => handleAction(duplicateRecruitment, r.id, 'Recruitment duplicated'),
+                              },
+                              ...(r.status === 'ACTIVE'
+                                ? [{ label: 'Close Recruitment', onClick: () => handleAction(closeRecruitment, r.id, 'Recruitment closed') }]
+                                : []),
+                              ...(r.status === 'INACTIVE'
+                                ? [{ label: 'Launch', onClick: () => handleAction(launchRecruitment, r.id, 'Recruitment launched') }]
+                                : []),
+                              { label: 'Edit setting', onClick: () => navigate(r.id, { state: { startInEdit: true } }) },
+                            ]
                           : []),
-                        ...(r.status === 'INACTIVE'
-                          ? [{ label: 'Launch', onClick: () => handleAction(launchRecruitment, r.id, 'Recruitment launched') }]
-                          : []),
-                        { label: 'Edit setting', onClick: () => navigate(r.id) },
                       ]}
                     />
                   </div>

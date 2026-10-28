@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmDialog, DetailHeader, NotFound, TableSkeleton, useToast } from '../../shared/components'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetCandidateQuery, useHireCandidateMutation, useUpdateCandidateMutation } from './api'
 
 const EDITABLE_FIELDS = ['name', 'email', 'phone', 'qualifications', 'experience', 'coverNote', 'portfolio']
@@ -14,11 +16,12 @@ export function CandidateDetail() {
   const location = useLocation()
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.STAFF_RECRUITMENT)
 
   const { data: candidate, isLoading, error: loadError } = useGetCandidateQuery(candidateId)
   const [updateCandidate, { isLoading: saving }] = useUpdateCandidateMutation()
   const [hireCandidate, { isLoading: hiring }] = useHireCandidateMutation()
-  const [mode, setMode] = useState(location.state?.startInEdit ? 'edit' : 'view')
+  const [mode, setMode] = useState(canManage && location.state?.startInEdit ? 'edit' : 'view')
   const [form, setForm] = useState(null)
   const [confirmingHire, setConfirmingHire] = useState(false)
 
@@ -38,7 +41,7 @@ export function CandidateDetail() {
   }
   if (isLoading || !form) return <TableSkeleton rows={4} cols={2} />
 
-  const editable = candidate.source === 'WALK_IN'
+  const editable = canManage && candidate.source === 'WALK_IN'
 
   async function handleSave() {
     try {
@@ -79,7 +82,7 @@ export function CandidateDetail() {
         saving={saving}
       />
 
-      {candidate.status !== 'HIRED' && (
+      {canManage && candidate.status !== 'HIRED' && (
         <div className="cluster" style={{ marginBottom: 16 }}>
           <button type="button" className="btn btn-primary" onClick={() => setConfirmingHire(true)}>
             Hire

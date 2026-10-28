@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ConfirmDialog, KebabMenu, TableSkeleton, useToast } from '../../shared/components'
 import { INTERVIEW_TYPE } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import {
   useGetRecruitmentQuery,
   useHireCandidateMutation,
@@ -29,6 +31,7 @@ function shortDate(value) {
 export function RecruitmentPipeline({ recruitmentId }) {
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.STAFF_RECRUITMENT)
   const { data: r } = useGetRecruitmentQuery(recruitmentId)
   const { data: candidates } = useListCandidatesQuery({ recruitmentId })
   const [updateCandidate] = useUpdateCandidateMutation()
@@ -39,7 +42,7 @@ export function RecruitmentPipeline({ recruitmentId }) {
 
   if (!r || !candidates) return <TableSkeleton rows={3} cols={4} />
 
-  const canAddWalkIn = r.audience !== 'B2C' && r.status !== 'CLOSED'
+  const canAddWalkIn = canManage && r.audience !== 'B2C' && r.status !== 'CLOSED'
   const openCandidate = (c) => navigate(`candidates/${r.id}/${c.id}`)
 
   async function move(c, status, label) {
@@ -106,11 +109,13 @@ export function RecruitmentPipeline({ recruitmentId }) {
       {candidates.length === 0 ? (
         <div className="card empty-state">
           <div className="empty-state-title">No candidates yet</div>
-          <p>{r.status === 'INACTIVE' ? 'Launch this opening to start receiving applications.' : 'Applications will show up here.'}</p>
+          <p>{r.status === 'INACTIVE' && canManage ? 'Launch this opening to start receiving applications.' : 'Applications will show up here.'}</p>
           {r.status === 'INACTIVE' ? (
-            <button type="button" className="btn btn-primary" onClick={launch}>
-              Launch opening
-            </button>
+            canManage && (
+              <button type="button" className="btn btn-primary" onClick={launch}>
+                Launch opening
+              </button>
+            )
           ) : (
             canAddWalkIn && (
               <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
@@ -139,9 +144,9 @@ export function RecruitmentPipeline({ recruitmentId }) {
                         ariaLabel={`Actions for ${c.name}`}
                         items={[
                           { label: 'View', onClick: () => openCandidate(c) },
-                          ...(c.status === 'APPLIED' ? [{ label: 'Shortlist', onClick: () => move(c, 'SHORTLISTED', 'shortlisted') }] : []),
-                          ...(c.status === 'SHORTLISTED' ? [{ label: 'Hire', onClick: () => setPendingHire(c) }] : []),
-                          ...(c.status === 'APPLIED' || c.status === 'SHORTLISTED'
+                          ...(canManage && c.status === 'APPLIED' ? [{ label: 'Shortlist', onClick: () => move(c, 'SHORTLISTED', 'shortlisted') }] : []),
+                          ...(canManage && c.status === 'SHORTLISTED' ? [{ label: 'Hire', onClick: () => setPendingHire(c) }] : []),
+                          ...(canManage && (c.status === 'APPLIED' || c.status === 'SHORTLISTED')
                             ? [{ label: 'Reject', danger: true, onClick: () => move(c, 'REJECTED', 'rejected') }]
                             : []),
                         ]}

@@ -5,6 +5,7 @@ import {
   EmptyState,
   KebabMenu,
   PersonCell,
+  rowClick,
   SearchInput,
   StatusBadge,
   SummaryStats,
@@ -13,6 +14,8 @@ import {
   useToast,
 } from '../../shared/components'
 import { ATTENDANCE_STATUS, toOptions } from '../../shared/ui-tags'
+import { FLAGS } from '../../shared/flags'
+import { useCanManage } from '../../shared/permissions'
 import { useGetAttendanceRegisterQuery, useGetAttendanceSummaryQuery, useUpdateAttendanceMutation } from './api'
 import { isoToTimeInput, timeInputToIso } from './timeAdapters'
 
@@ -27,6 +30,7 @@ export function AttendanceRegister() {
   const [editingId, setEditingId] = useState(null)
   const navigate = useNavigate()
   const { push } = useToast()
+  const canManage = useCanManage(FLAGS.STAFF_ATTENDANCE)
 
   const { data: summary, isLoading: summaryLoading } = useGetAttendanceSummaryQuery()
   const { data, isLoading, isFetching } = useGetAttendanceRegisterQuery({
@@ -103,12 +107,17 @@ export function AttendanceRegister() {
             </thead>
             <tbody>
               {rows.map((row) =>
-                editingId === row.staffId ? (
+                canManage && editingId === row.staffId ? (
                   <EditRow key={row.staffId} row={row} onChange={handleFieldChange} onDone={() => setEditingId(null)} />
                 ) : (
-                  <tr key={row.staffId}>
+                  <tr key={row.staffId} className="is-clickable" onClick={rowClick(() => navigate(`${row.staffId}/history`))}>
                     <td>
-                      <PersonCell name={row.name} subtitle={row.title} fallback="—" />
+                      <PersonCell
+                        name={row.name}
+                        subtitle={row.title}
+                        fallback="—"
+                        onOpen={() => navigate(`${row.staffId}/history`)}
+                      />
                     </td>
                     <td className="today-cell">{shiftLabel(row)}</td>
                     <td>{row.checkIn ? isoToTimeInput(row.checkIn) : <span className="none">—</span>}</td>
@@ -123,7 +132,7 @@ export function AttendanceRegister() {
                     <td>
                       <KebabMenu
                         items={[
-                          { label: 'Mark attendance', onClick: () => setEditingId(row.staffId) },
+                          ...(canManage ? [{ label: 'Mark attendance', onClick: () => setEditingId(row.staffId) }] : []),
                           { label: 'History', onClick: () => navigate(`${row.staffId}/history`) },
                         ]}
                       />

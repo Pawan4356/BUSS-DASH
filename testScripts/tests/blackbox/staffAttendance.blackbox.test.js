@@ -68,6 +68,12 @@ describe('BB-ATT  Register  GET /register', () => {
     expect((await api('get', `/register?date=${DATE}`)).body.rows).toHaveLength(1)
   })
 
+  it('TC-T42 pending invites (not yet onboarded) are not listed', async () => {
+    seedStaff(fake.prisma, { firstName: null, lastName: null, status: 'PENDING' })
+    const rows = (await api('get', `/register?date=${DATE}`)).body.rows
+    expect(rows.map((r) => r.name)).toEqual(['Rohan Patel'])
+  })
+
   it('TC-T07 other businesses\' staff are never listed', async () => {
     seedBusiness(fake.prisma, { id: 'biz3' })
     seedStaff(fake.prisma, { businessId: 'biz3', firstName: 'Foreign' })
@@ -251,6 +257,11 @@ describe('BB-ATT  Today\'s summary  GET /summary', () => {
     expect((await api('get', '/summary')).body.totalStaff).toBe(1)
   })
 
+  it('TC-T43 pending invites are excluded from the summary (not counted as absent)', async () => {
+    seedStaff(fake.prisma, { status: 'PENDING' })
+    expect((await api('get', '/summary')).body).toMatchObject({ totalStaff: 1, absentToday: 1 })
+  })
+
   it('TC-T30 summary is scoped to the caller\'s business', async () => {
     seedBusiness(fake.prisma, { id: 'biz3' })
     seedStaff(fake.prisma, { businessId: 'biz3' })
@@ -299,6 +310,31 @@ describe('BB-ATT  Attendance history  GET /staff/:staffId/history', () => {
     seedBusiness(fake.prisma, { id: 'biz3' })
     const foreign = seedStaff(fake.prisma, { businessId: 'biz3' })
     expect((await api('get', `/staff/${foreign.id}/history`)).status).toBe(404)
+  })
+})
+
+describe('BB-ATT  Months with records  GET /staff/:staffId/months', () => {
+  it('TC-TM1 lists each month that has a record once, ascending', async () => {
+    await mark(rohan.id, { checkIn: '2026-10-01T09:00:00.000Z' }, '2026-10-01')
+    await mark(rohan.id, { checkIn: '2026-08-31T09:00:00.000Z' }, '2026-08-31')
+    await mark(rohan.id, { checkIn: '2026-10-02T09:00:00.000Z' }, '2026-10-02')
+    const res = await api('get', `/staff/${rohan.id}/months`)
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual(['2026-08', '2026-10'])
+  })
+
+  it('TC-TM2 no records -> empty array', async () => {
+    expect((await api('get', `/staff/${rohan.id}/months`)).body).toEqual([])
+  })
+
+  it('TC-TM3 unknown staff -> 404', async () => {
+    expect((await api('get', '/staff/ghost/months')).status).toBe(404)
+  })
+
+  it("TC-TM4 another business's staff -> 404", async () => {
+    seedBusiness(fake.prisma, { id: 'biz3' })
+    const foreign = seedStaff(fake.prisma, { businessId: 'biz3' })
+    expect((await api('get', `/staff/${foreign.id}/months`)).status).toBe(404)
   })
 })
 

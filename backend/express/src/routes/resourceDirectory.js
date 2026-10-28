@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requireFlag } from '../middleware/requireFlag.js'
+import { requireManagerForWrites } from '../middleware/requireRole.js'
 import { FLAGS } from '../lib/entitlements.js'
 import {
   serializeResourceDetail,
@@ -12,7 +13,7 @@ import {
 } from '../lib/resourceHelpers.js'
 
 export const resourceDirectoryRouter = Router()
-resourceDirectoryRouter.use(requireAuth, requireFlag(FLAGS.RESOURCE_DIRECTORY))
+resourceDirectoryRouter.use(requireAuth, requireFlag(FLAGS.RESOURCE_DIRECTORY), requireManagerForWrites(FLAGS.RESOURCE_DIRECTORY))
 
 const WORKSPACE_LIST_INCLUDE = { subSpaces: true, resources: true }
 const WORKSPACE_DETAIL_INCLUDE = {

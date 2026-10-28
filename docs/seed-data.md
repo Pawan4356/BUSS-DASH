@@ -19,7 +19,8 @@ npm run --workspace backend/express seed
 
 The seed is **idempotent**. On every run it:
 
-1. Deletes the legacy placeholder business (`demo-business`) if it is still there.
+1. Deletes businesses from earlier versions of the seed if they are still there: the placeholder
+   `demo-business`, and Bluepeak Logistics, Saffron Table Café and Lumen Design Studio.
 2. Deletes each seeded company by its fixed ID. Every child row cascades.
 3. Recreates the companies with dates **relative to today**: joining dates, attendance
    history, recruitment launch dates, interview dates and assignment windows.
@@ -28,7 +29,7 @@ So the data always looks current. For example, today's attendance register shows
 who are checked in right now, people who have finished their shift, and people whose shift
 hasn't started yet.
 
-> Re-running the seed wipes any changes made through the UI in these five businesses.
+> Re-running the seed wipes any changes made through the UI in these two businesses.
 > Businesses you created yourself are left alone.
 
 ---
@@ -51,29 +52,6 @@ The Avatar column shows the preset key; the database stores it as `preset:<key>`
 | `lakshmi.iyer@meridianhealth.in` | Resource Manager | Lakshmi Iyer | Facilities Manager | `person-berry` (bun, glasses) |
 | `rahul.desai@meridianhealth.in` | Operations Manager | Rahul Desai | Operations Manager | `person-forest` (side part, beard) |
 | `pooja.sinha@meridianhealth.in` | Staff | Pooja Sinha | Senior Staff Nurse | *Initials (none set)* |
-
-### Bluepeak Logistics: all modules except premium scheduling
-
-| Email | Role | Name | Job title | Avatar |
-|---|---|---|---|---|
-| `harpreet.gill@bluepeaklogistics.com` | Owner | Harpreet Gill | Managing Director | `person-amber` (grey hair, beard) |
-| `anil.kumar@bluepeaklogistics.com` | Operations Manager | Anil Kumar | Fleet Operations Manager | `attack-helicopter` 🚁 |
-| `fatima.siddiqui@bluepeaklogistics.com` | Attendance Manager | Fatima Siddiqui | Warehouse Supervisor | `person-plum` (side part, glasses) |
-| `george.mathew@bluepeaklogistics.com` | Recruitment Manager | George Mathew | People Partner | `gorilla` 🦍 |
-
-### Saffron Table Café: some modules locked by entitlement rules
-
-| Email | Role | Name | Job title | Avatar |
-|---|---|---|---|---|
-| `meenakshi@saffrontable.in` | Owner | Meenakshi Pillai | Founder & Head Chef | `person-rose` (long hair, glasses) |
-| `daniel@saffrontable.in` | Staff Manager | Daniel D'Souza | Café Manager | `person-indigo` (curly hair, glasses) |
-
-### Lumen Design Studio: no modules purchased
-
-| Email | Role | Name | Job title | Avatar |
-|---|---|---|---|---|
-| `tara.malhotra@lumenstudio.co` | Owner | Tara Malhotra | Founder & Creative Director | *Initials (partial profile)* |
-| `studio.ops@lumenstudio.co` | Operations Manager | *(blank profile)* | — | *Initials from email* |
 
 ### Lala Company: the meme tenant
 
@@ -105,28 +83,24 @@ What it exercises:
 
 ## 3. Companies at a glance
 
-| | Meridian Health Clinic | Bluepeak Logistics | Saffron Table Café | Lumen Design Studio |
-|---|---|---|---|---|
-| Business ID | `biz-meridian-health` | `biz-bluepeak-logistics` | `biz-saffron-table` | `biz-lumen-studio` |
-| Industry | Healthcare (outpatient clinic) | Warehousing & last-mile delivery | Food & beverage | Creative agency |
-| Verification | ENHANCED | BASIC | BASIC | BASIC |
-| Recruitment model | BOTH | INTERNAL | B2C | INTERNAL |
-| Staff Directory | ✅ | ✅ | ✅ | 🔒 not purchased |
-| Staff Recruitment | ✅ | ✅ (internal needs only BASIC) | 🔒 B2C requires ENHANCED | 🔒 not purchased |
-| Staff Attendance | ✅ | ✅ | ✅ | 🔒 not purchased |
-| Resource Directory | ✅ | ✅ | 🔒 not purchased | 🔒 not purchased |
-| Operational Scheduling | ✅ | ✅ | 🔒 needs Resource Directory | 🔒 not purchased |
-| Scheduling Premium | ✅ | ❌ not purchased | ❌ | ❌ |
-| Accounts | 7 | 4 | 2 | 2 |
-| Staff | 14 | 10 | 7 | 0 |
-| Workspaces / Resources | 7 / 18 | 4 / 15 | — | — |
-| Recruitments | 5 | 4 | 1 (hidden while locked) | — |
-| Attendance history | 30 days | 21 days | 14 days | — |
-| Assignments | 11 | 7 | — | — |
+| | Meridian Health Clinic | Lala Company |
+|---|---|---|
+| Business ID | `biz-meridian-health` | `biz-lala-company` |
+| Industry | Healthcare (outpatient clinic) | Comedy |
+| Verification | ENHANCED | ENHANCED |
+| Recruitment model | BOTH | BOTH |
+| Modules | All, including Scheduling Premium | All, including Scheduling Premium |
+| Accounts | 7 | 4 |
+| Staff | 22 | 4 |
+| Workspaces / Resources | 7 / 18 | 5 / 73 |
+| Recruitments | 5 | 3 |
+| Attendance history | 30 days | 21 days |
+| Assignments | 16 | 5 |
 
-Together, the four main companies cover every branch of `resolveModuleAccess`
-(`backend/express/src/lib/entitlements.js`): allowed, `not-purchased`,
-`requires-enhanced-verification` and `requires-staff-and-resource-directory`.
+> Both companies have every module unlocked, so the locked-module screens and the
+> `not-purchased`, `requires-enhanced-verification` and
+> `requires-staff-and-resource-directory` branches of `resolveModuleAccess` are no longer
+> visible in the demo data. The automated tests still cover them.
 
 ---
 
@@ -136,16 +110,16 @@ Together, the four main companies cover every branch of `resolveModuleAccess`
 
 | Scenario | Where to see it |
 |---|---|
-| Every staff status: Pending, Active, On Leave, Suspended, Resigned | Meridian: `MHC-010` Pending, Sneha Kapoor On Leave, Meera Joshi Suspended, Vikram Singh Resigned |
-| Archived staff (hidden from lists) | Vikram Singh (Meridian), Prakash Gaikwad (Bluepeak) |
-| Pending invite with only an account ID | `MHC-010`, `BPL-109`, `STC-07` |
+| Every staff status: Pending, Active, On Leave, Suspended, Resigned | Meridian: `MHC-010` and `MHC-022` Pending; Sneha Kapoor and Rajesh Gowda On Leave; Meera Joshi and Tanvi Deshpande Suspended; Vikram Singh and Harish Nambiar Resigned |
+| Archived staff (hidden from lists) | Vikram Singh, Harish Nambiar |
+| Pending invite with only an account ID | `MHC-010`, `MHC-022` |
 | All employment types: Full-Time, Part-Time, Contract, Intern, Visiting Consultant | Meridian roster |
 | Standard weekday shift | Aditi Sharma 09:00–17:00 Mon–Fri |
-| Split shift (two windows on one day) | Dr. Farhan Ali (09–13 and 17–20), Ravi Shankar at Saffron (lunch and dinner) |
-| Explicit day off (`isOff` entry) | Imran Shaikh, off on Wednesday; Kavya Subramanian, off on Tuesday |
+| Split shift (two windows on one day) | Dr. Farhan Ali (09–13 and 17–20) |
+| Explicit day off (`isOff` entry) | Imran Shaikh, off on Wednesday |
 | Evening/night shift, seven days a week | Arjun Rao 18:00–23:30 |
-| Early-morning shift | Sandeep Patil 06:00, Ganesh Kale 05:00 |
-| Weekend-only part-timer | Ayesha Khan (Fri–Sun) |
+| Early-morning shift | Manoj Kumar 07:00, Deepa Krishnan 07:30 |
+| Evening shift, six days a week | Kabir Malhotra 16:00–23:00 |
 | No working schedule | Pending invites and resigned staff |
 | Work-responsibility checklist, from all three on to none | Aditi Sharma all three on; Rohan Mehta scheduling only; Sneha Kapoor none |
 | Workspace and resource responsibilities | Aditi → Outpatient Wing + Reception; Rohan → Patient Bed(1); Priya → Digital X-Ray System |
@@ -159,31 +133,31 @@ patterns are realistic and the same on every run:
 | Profile | Behaviour | Example |
 |---|---|---|
 | `punctual` | Checks in 0–10 minutes early, leaves on time | Aditi Sharma, Deepa Krishnan |
-| `late-prone` | About 45% of days late by 8–48 minutes | Rohan Mehta, Imran Shaikh, Mohammed Irfan |
-| `leaves-early` | About 50% of days out 15–65 minutes early | Dr. Farhan Ali, Rekha Jadhav |
-| `irregular` | Occasional absences, late arrivals and early exits | Ananya Gupta, Suresh Pillai, Thomas Fernandes |
-| `on-leave` | LEAVE on every working day | Sneha Kapoor, Ganesh Kale, Lavanya Ramesh |
+| `late-prone` | About 45% of days late by 8–48 minutes | Rohan Mehta, Imran Shaikh, Dr. Shalini Rao |
+| `leaves-early` | About 50% of days out 15–65 minutes early | Dr. Farhan Ali, Fatima Begum |
+| `irregular` | Occasional absences, late arrivals and early exits | Ananya Gupta, Suresh Pillai, Manoj Kumar |
+| `on-leave` | LEAVE on every working day | Sneha Kapoor, Rajesh Gowda |
 
 | Scenario | Where to see it |
 |---|---|
 | Present, Absent, Leave and Off statuses | All companies (Off is generated on days outside the schedule) |
 | Late check-in / early check-out flags | Calculated with the same `computeLateEarly` function the API uses |
-| Planned leave inside an otherwise normal history | Aditi Sharma 9 days ago; Imran Shaikh 11–12 days ago; Sandeep Patil 4 days ago |
-| One-off absence | Priya Nair, 5 days ago |
-| Forgot to check out (check-in only) | Arjun Rao, 3 days ago |
+| Planned leave inside an otherwise normal history | Aditi Sharma 9 days ago; Imran Shaikh 11–12 days ago; Kabir Malhotra 6 days ago; Manoj Kumar 2 days ago |
+| One-off absence | Priya Nair, 5 days ago; Fatima Begum, 20 days ago |
+| Forgot to check out (check-in only) | Arjun Rao, 3 days ago; Kabir Malhotra, 15 days ago |
 | **Today**: shift in progress (checked in, no check-out yet) | Anyone whose shift is running when you seed |
 | **Today**: shift finished | Anyone whose shift ended before you seeded |
 | **Today**: shift not started (no record, shows as Absent) | For example, Arjun Rao before 18:00 |
-| Split-shift early-checkout flag (known defect DEF-03) | Dr. Farhan Ali and Ravi Shankar, flagged against their first window |
-| Suspended staff with no records | Meera Joshi |
+| Split-shift early-checkout flag (known defect DEF-03) | Dr. Farhan Ali, flagged against his first window |
+| Suspended staff with no records | Meera Joshi, Tanvi Deshpande |
 
 ### Staff Recruitment
 
 | Scenario | Where to see it |
 |---|---|
 | Statuses Active, Inactive (draft) and Closed | Meridian: Registered Nurse (Active), Lab Technician (Inactive), Housekeeping Associate (Closed) |
-| B2C and Internal-only audiences | Meridian has both; Bluepeak has internal only |
-| Interview required vs not required | Radiographer (required) vs Physiotherapist and Delivery Driver (not required) |
+| B2C and Internal-only audiences | Registered Nurse (B2C) vs Radiographer (Internal) |
+| Interview required vs not required | Radiographer (required) vs Physiotherapist (not required) |
 | Online and on-site interview rounds | Registered Nurse round 1 (Google Meet) and round 2 (on-site) |
 | Interview statuses Scheduled, Completed and Cancelled | Registered Nurse R1 Completed, R2 Scheduled; Radiographer R2 Cancelled |
 | Staff interviewer vs interviewer entered by name | Rohan Mehta (staff) vs "Dr. S. Venkatesh (Visiting Radiologist)" |
@@ -192,7 +166,6 @@ patterns are realistic and the same on every run:
 | Candidates with a CV link and cover note | Farah Sheikh (CV), Divya Menon (cover note) |
 | Active job with no applicants (empty pipeline) | Physiotherapist |
 | Closed job with several hires | Housekeeping Associate (2 hired, 1 rejected) |
-| Recruitment locked by verification level | Saffron Table Café |
 
 ### Resource Directory
 
@@ -200,13 +173,13 @@ patterns are realistic and the same on every run:
 |---|---|
 | Workspace statuses Active, Maintenance and Inactive | Meridian: Outpatient Wing, Minor Procedure Room, Physiotherapy Studio |
 | Workspaces with and without sub-spaces | Outpatient Wing (4 rooms) vs Reception (none) |
-| Multiple units with the `Name(n)` naming | Patient Bed(1–6), Delivery Van(1–4), Wheelchair(1–3) |
-| A single unit under maintenance in a set | Patient Bed(6), Delivery Van(4) |
-| Inactive resource | Vaccine Refrigerator, Conveyor Sorter |
+| Multiple units with the `Name(n)` naming | Patient Bed(1–6), Wheelchair(1–3), Reception Workstation(1–2) |
+| A single unit under maintenance in a set | Patient Bed(6) |
+| Inactive resource | Vaccine Refrigerator |
 | Dedicated vs Shared behaviour | Digital X-Ray System (Dedicated) vs Patient Beds (Shared) |
 | Scheduling required vs not required | Ultrasound Scanner vs Hematology Analyzer |
-| **Awaiting scheduling** (requires scheduling, no assignment) | Ultrasound Scanner, Patient Bed(3–5), Delivery Van(4), Forklift(2) |
-| Resource in more than one workspace | ECG Machine (Outpatient Wing + Day-Care Ward), Handheld Scanners |
+| **Awaiting scheduling** (requires scheduling, no assignment) | Ultrasound Scanner, Patient Bed(4–5) |
+| Resource in more than one workspace | ECG Machine (Outpatient Wing + Day-Care Ward) |
 | Independent resource (not in any workspace) | Ambulance, Wheelchairs |
 | Custom category beyond the presets | "Mobility Aid" (Wheelchair) |
 
@@ -216,16 +189,15 @@ patterns are realistic and the same on every run:
 |---|---|
 | Weekly repeat | Most assignments, for example Rohan Mehta on Patient Bed(1), Mon/Wed/Fri |
 | One-off (do not repeat) today | Suresh Pillai on the Ambulance (patient transfer) |
-| One-off in the future | ECG health camp in 2 days; Bluepeak bulk B2B drop tomorrow |
-| Custom repeat, every N weeks | Arjun Rao every 2 weeks (Sat); Bluepeak monthly cycle count (every 4 weeks) |
+| One-off in the future | ECG health camp in 2 days; paediatric screening camp in 7 days (same ECG Machine) |
+| Custom repeat, every N weeks | Arjun Rao every 2 weeks (Sat) |
 | Starts in the future (Upcoming) | Arjun Rao's fortnightly round starts in 3 days |
-| Ended (Completed) | Ananya Gupta's onboarding rotation; Bluepeak's dairy contract |
+| Ended (Completed) | Ananya Gupta's onboarding rotation |
 | Cancelled | Imran Shaikh's medication-counselling desk |
 | Live right now (Active) | Whatever window covers the current time when you open the page |
 | Assignment to a workspace only, a resource only, or both | Reception (workspace), Ambulance (resource), X-Ray + Radiology Suite (both) |
 | Several windows per day | Dr. Farhan Ali's morning and evening OPD |
-| Premium workload and utilisation views | Meridian (premium on) vs Bluepeak (premium off) |
-| Scheduling locked by a missing prerequisite | Saffron Table Café |
+| Premium workload and utilisation views | Meridian and Lala Company (premium on in both) |
 
 > FastAPI recalculates assignment status (Upcoming, Active, Completed) every time the page
 > loads, so the seeded statuses are only a starting point. Cancelled is never recalculated.
@@ -236,10 +208,8 @@ patterns are realistic and the same on every run:
 |---|---|
 | One account per role | Meridian (all 7 `AccountRole` values) |
 | Preset avatar | Most accounts |
-| The fun presets | Anil Kumar (`attack-helicopter`), George Mathew (`gorilla`) at Bluepeak |
+| The fun presets | Pavan Chamar (`attack-helicopter`), Bijay Sing (`gorilla`) at Lala Company |
 | Initials fallback, full profile | Pooja Sinha |
-| Partly filled profile | Tara Malhotra |
-| Blank profile (sidebar shows the email) | `studio.ops@lumenstudio.co` |
 | Uploaded photo | Upload one on `/profile`. Photos aren't seeded. |
 
 ---

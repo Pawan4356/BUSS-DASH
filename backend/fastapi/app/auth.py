@@ -41,7 +41,10 @@ REASON_MESSAGES = {
 }
 
 
-def require_scheduling_access(premium: bool = False):
+SCHEDULING_MANAGER_ROLES = {"OWNER", "OPERATIONS_MANAGER"}
+
+
+def require_scheduling_access(premium: bool = False, manage: bool = False):
     def dependency(
         account: Account = Depends(get_current_account),
         db: Session = Depends(get_db),
@@ -53,6 +56,13 @@ def require_scheduling_access(premium: bool = False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"message": REASON_MESSAGES.get(reason, "Access denied"), "reason": reason},
+            )
+        # Mirrors backend/express/src/lib/permissions.js — writes need a
+        # role that manages Operational Scheduling.
+        if manage and account.role not in SCHEDULING_MANAGER_ROLES:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"message": "Your role does not allow changes in this module.", "reason": "insufficient-role"},
             )
         return SchedulingContext(account=account, business=business, flags=flags)
 

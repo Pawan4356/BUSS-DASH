@@ -415,18 +415,62 @@ textarea {
   font-size: 14px;
 }
 
+/* Back link: a quiet pill above the page title; the chevron sits in a
+   tinted circle and nudges left on hover. */
 .back-link {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 13px;
+  gap: 8px;
   margin-bottom: var(--space-3);
+  padding: 3px 12px 3px 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.back-link-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ocean-tint);
+  color: var(--ocean-ink);
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
 .back-link:hover {
   color: var(--text);
+  border-color: var(--text-faint);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--gray-900) 8%, transparent);
+}
+
+.back-link:hover .back-link-icon {
+  transform: translateX(-2px);
+}
+
+.back-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-link:hover .back-link-icon {
+    transform: none;
+  }
 }
 
 /* Cards / tiles */
@@ -696,6 +740,20 @@ input[type='radio'] {
   border-bottom: none;
 }
 
+/* Whole row / card opens its detail (see shared/components/rowClick.js). */
+.table tbody tr.is-clickable,
+.card.is-clickable {
+  cursor: pointer;
+}
+
+.card.is-clickable {
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.card.is-clickable:hover {
+  border-color: var(--text-faint);
+}
+
 /* Badges */
 
 .badge {
@@ -753,10 +811,9 @@ input[type='radio'] {
   display: inline-block;
 }
 
+/* Portalled to <body> and placed by KebabMenu (fixed top/bottom + right). */
 .kebab-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
+  position: fixed;
   min-width: 180px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -764,10 +821,22 @@ input[type='radio'] {
   box-shadow:
     0 1px 2px rgb(20 24 30 / 0.06),
     0 10px 28px rgb(20 24 30 / 0.14);
-  z-index: 20;
+  z-index: 120;
   padding: 5px;
   transform-origin: top right;
   animation: menu-in var(--dur-base) var(--ease-out);
+}
+
+.kebab-menu.is-up {
+  transform-origin: bottom right;
+  animation-name: menu-in-up;
+}
+
+@keyframes menu-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
 }
 
 @keyframes menu-in {
@@ -780,7 +849,6 @@ input[type='radio'] {
 /* Hover/active feedback for interactive bits that had none, so colour and
    fill changes ease in instead of snapping. */
 .nav-link,
-.back-link,
 .kebab-item,
 .stepper button,
 .tabs button,
@@ -931,14 +999,13 @@ input[type='radio'] {
 .schedule-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 .schedule-day-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -947,32 +1014,59 @@ input[type='radio'] {
 }
 
 .schedule-day-label {
-  width: 90px;
+  width: 44px;
   flex-shrink: 0;
+  order: 0;
+  font-size: 13px;
   font-weight: 600;
-  padding-top: var(--space-2);
 }
 
+/* Windows sit side by side and wrap, instead of one full-width row each. */
 .schedule-windows {
+  order: 2;
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  min-height: 32px;
 }
 
 .schedule-window-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 6px;
+}
+
+.schedule-window-row .input {
+  width: 118px;
+  padding: 5px 8px;
+}
+
+.schedule-window-row .btn-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.schedule-add {
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.schedule-add:hover {
+  color: var(--text);
 }
 
 .schedule-off-toggle {
+  order: 1;
+  width: 48px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: var(--space-1);
   font-size: 12px;
   color: var(--text-muted);
-  padding-top: var(--space-2);
 }
 
 .repeat-options {
@@ -1314,6 +1408,8 @@ input[type='radio'] {
   width: 100%;
   max-height: 85vh;
   overflow-y: auto;
+  /* Scrolling inside a dialog never moves the page behind the scrim. */
+  overscroll-behavior: contain;
   padding: 24px 26px;
   border-radius: 10px;
   animation: modal-in var(--dur-base) var(--ease-out);
@@ -2349,9 +2445,10 @@ input[type='time']::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
+/* No overscroll containment: once the panel hits its top/bottom, the wheel
+   hands off to the page so it never feels stuck. */
 .scroll-shadow-body {
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .breakdown-head {
@@ -2421,4 +2518,366 @@ input[type='time']::-webkit-calendar-picker-indicator:hover {
 
 .breakdown-more:hover {
   background: color-mix(in srgb, var(--bg) 60%, var(--surface));
+}
+
+/* Detail pages — each section is a card; fields are compact label/value
+   pairs with small caps labels so the values carry the visual weight. */
+
+.detail-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.detail-meta .dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.detail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 1100px) {
+  .detail-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px 18px;
+  margin-bottom: var(--space-4);
+}
+
+.detail-columns > .detail-card {
+  margin-bottom: 0;
+}
+
+.detail-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: 14px;
+}
+
+.detail-card-head .section-title {
+  margin: 0;
+  font-size: 17px;
+}
+
+.detail-card-head .count {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-sub {
+  margin: 16px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.detail-sub:first-of-type {
+  margin-top: 0;
+}
+
+.detail-card .field-grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px 20px;
+}
+
+.detail-card .field-grid.is-wide {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.detail-card .field {
+  margin-bottom: 0;
+  gap: 4px;
+  min-width: 0;
+}
+
+.detail-card .field-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.detail-card .field-static {
+  padding: 0;
+  min-height: 22px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.detail-card .field-static.is-prose {
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.detail-card .chip {
+  font-size: 12.5px;
+  padding: 3px 10px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-color: transparent;
+}
+
+.detail-card .chips {
+  gap: 6px;
+}
+
+.detail-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+/* Labelled groups (e.g. Work / Workspaces / Resources): side by side when
+   read-only, stacked while editing so the checkbox tiles get the full width. */
+.detail-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 24px;
+}
+
+.detail-groups.is-editing {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.detail-groups .detail-sub {
+  margin: 0 0 8px;
+}
+
+/* Checkbox tiles: multi-column, the whole tile is the hit target. */
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.check-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.check-tile:hover {
+  border-color: var(--text-faint);
+}
+
+.check-tile:has(input:checked) {
+  border-color: transparent;
+  background: var(--ocean-tint);
+  color: var(--ocean-ink);
+}
+
+/* Read-only week: seven compact tiles instead of seven text rows. */
+.week-view {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 860px) {
+  .week-view {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.week-day {
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.week-day b {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.week-day span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-day.is-working {
+  border: 1px solid transparent;
+  background: var(--ocean-tint);
+}
+
+.week-day.is-working b,
+.week-day.is-working span {
+  color: var(--ocean-ink);
+}
+
+.week-day.is-working span {
+  font-weight: 500;
+}
+
+/* Attendance history — month stats strip, calendar grid, compact list.
+   Tones match the register's "day at a glance" bar. */
+
+.history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.history-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.history-stat b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-stat i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--tone);
+}
+
+.tone-present { --tone: var(--mint); }
+.tone-late { --tone: var(--sun); }
+.tone-leave { --tone: color-mix(in srgb, var(--sun) 45%, var(--surface)); }
+.tone-absent { --tone: var(--coral); }
+.tone-off { --tone: var(--border); }
+.tone-none { --tone: transparent; }
+
+.history-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 12px;
+}
+
+.history-cal-dow {
+  padding: 0 4px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.history-day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 66px;
+  padding: 6px 8px 6px 10px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--surface));
+  font-size: 12px;
+}
+
+.history-day.tone-off,
+.history-day.tone-none {
+  background: transparent;
+  border: 1px dashed var(--border);
+  padding-left: 8px;
+}
+
+.history-day.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--ocean);
+}
+
+.history-day-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.history-day-top b {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-day-top span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.history-day.tone-off .history-day-top span,
+.history-day.tone-none .history-day-top span,
+.history-day.tone-none b {
+  color: var(--text-faint);
+}
+
+.history-day-times {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-day-stay {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-day-stay em {
+  font-style: normal;
+  color: var(--coral-ink);
+}
+
+@media (max-width: 860px) {
+  .history-day-times,
+  .history-day-stay {
+    display: none;
+  }
+}
+
+.table-compact td {
+  padding-top: 7px;
+  padding-bottom: 7px;
 }

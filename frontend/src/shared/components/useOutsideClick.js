@@ -1,12 +1,16 @@
 import { useEffect } from 'react'
 
-/** Fires `onOutside` on click or Escape outside `ref`. Used by KebabMenu. */
-export function useOutsideClick(ref, onOutside, active = true) {
+/**
+ * Fires `onOutside` on click or Escape outside `refs` (one ref or an array,
+ * e.g. a trigger plus a portalled popup). Used by KebabMenu.
+ */
+export function useOutsideClick(refs, onOutside, active = true) {
   useEffect(() => {
     if (!active) return undefined
+    const list = Array.isArray(refs) ? refs : [refs]
 
     function handlePointer(event) {
-      if (ref.current && !ref.current.contains(event.target)) onOutside()
+      if (!list.some((ref) => ref.current?.contains(event.target))) onOutside()
     }
     function handleKey(event) {
       if (event.key === 'Escape') onOutside()
@@ -18,5 +22,5 @@ export function useOutsideClick(ref, onOutside, active = true) {
       document.removeEventListener('mousedown', handlePointer)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [ref, onOutside, active])
+  }, [refs, onOutside, active])
 }

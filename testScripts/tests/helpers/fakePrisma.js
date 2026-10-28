@@ -12,6 +12,7 @@ function matchValue(actual, cond) {
       const b = String(cond.contains)
       return cond.mode === 'insensitive' ? a.toLowerCase().includes(b.toLowerCase()) : a.includes(b)
     }
+    if ('not' in cond) return !matchValue(actual, cond.not)
     if ('gte' in cond || 'lt' in cond) {
       const t = +actual
       return (cond.gte === undefined || t >= +cond.gte) && (cond.lt === undefined || t < +cond.lt)

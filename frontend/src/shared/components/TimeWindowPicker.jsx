@@ -65,8 +65,8 @@ export function TimeWindowPicker({ value, onChange }) {
                   </div>
                 ))}
               {!dayValue.isOff && (
-                <button type="button" className="btn btn-sm" onClick={() => addWindow(day)}>
-                  + Add Time Window
+                <button type="button" className="btn btn-sm schedule-add" onClick={() => addWindow(day)}>
+                  + Add window
                 </button>
               )}
               {dayValue.isOff && <span className="text-muted">Off</span>}
