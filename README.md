@@ -80,7 +80,7 @@ npm run --workspace backend/express seed
 
 # 6. Start the three services (one terminal each)
 npm run dev:express     # http://localhost:4000
-npm run dev:fastapi     # http://localhost:8000  (activate the venv first)
+cd backend/fastapi; .venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 npm run dev:frontend    # http://localhost:5173
 ```
 
@@ -116,17 +116,14 @@ Open <http://localhost:5173> and sign in with **`kavita.raman@meridianhealth.in`
 ## 3. Demo accounts
 
 The seed (`backend/express/src/seed.js`, data in `backend/express/src/seed-data/`, one
-file per company) creates five companies chosen so that, between them, every module
-state and every entitlement rule can be seen in the UI.
+file per company) creates two companies: Meridian Health Clinic, with every module unlocked, and Lala Company,
+a light-hearted tenant with extreme numbers.
 
 **Every seeded account uses the password `Parsor@2026`.**
 
 | Company | Sign in as (owner) | Set-up | What it demonstrates |
 |---|---|---|---|
 | Meridian Health Clinic | `kavita.raman@meridianhealth.in` | ENHANCED, recruitment BOTH | Everything unlocked, including Scheduling Premium |
-| Bluepeak Logistics | `harpreet.gill@bluepeaklogistics.com` | BASIC, recruitment INTERNAL | All modules but no Scheduling Premium; internal hiring only needs BASIC verification |
-| Saffron Table Café | `meenakshi@saffrontable.in` | BASIC, recruitment B2C | Recruitment locked (B2C needs ENHANCED); Scheduling locked (no Resource Directory) |
-| Lumen Design Studio | `tara.malhotra@lumenstudio.co` | BASIC, INTERNAL | Nothing purchased: every module shows its locked state |
 | Lala Company | `pavan.chamar@lalacompany.in` | — | A light-hearted extra tenant with joke profiles and avatars |
 
 Each company also has accounts for its other roles (Staff Manager, Recruitment Manager,
